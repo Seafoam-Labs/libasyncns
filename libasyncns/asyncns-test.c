@@ -1,3 +1,24 @@
+/* $Id$ */
+
+/***
+  This file is part of libasyncns.
+ 
+  libasyncns is free software; you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.
+ 
+  libasyncns is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+ 
+  You should have received a copy of the GNU Lesser General Public
+  License along with libasyncns; if not, write to the Free Software
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  USA.
+***/
+
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -14,31 +35,39 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in sa;
     char host[NI_MAXHOST] = "", serv[NI_MAXSERV] = "";
 
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = PF_UNSPEC;
-    hints.ai_socktype = SOCK_STREAM;
-
     if (!(asyncns = asyncns_new(5))) {
         fprintf(stderr, "asyncns_new() failed\n");
         goto fail;
     }
 
+    /* Make a name -> address query */
+    
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    q1 = asyncns_getaddrinfo(asyncns, argc >= 2 ? argv[1] : "www.heise.de", NULL, &hints);
+
+
+    /* Make an address -> name query */
+    
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
-    sa.sin_addr.s_addr = inet_addr("192.168.50.1");
+    sa.sin_addr.s_addr = inet_addr(argc >= 3 ? argv[2] : "193.99.144.71");
     sa.sin_port = htons(80);
     
-    q1 = asyncns_getaddrinfo(asyncns, argc >= 2 ? argv[1] : "www.heise.de", NULL, &hints);
     q2 = asyncns_getnameinfo(asyncns, (struct sockaddr*) &sa, sizeof(sa), 0, 1, 1); 
 
+
+    /* Wait until the two queries are completed */
+    
     while (!asyncns_isdone(asyncns, q1) || !asyncns_isdone(asyncns, q2)) {
         if (asyncns_wait(asyncns, 1) < 0)
             goto fail;
     }
 
-    ret = asyncns_getaddrinfo_done(asyncns, q1, &ai);
-
-    if (ret)
+    /* Interpret the result of the name -> addr query */
+    if ((ret = asyncns_getaddrinfo_done(asyncns, q1, &ai)))
         fprintf(stderr, "error: %s %i\n", gai_strerror(ret), ret);
     else {
         struct addrinfo *i;
@@ -58,14 +87,11 @@ int main(int argc, char *argv[]) {
         asyncns_freeaddrinfo(ai);
     }
 
-    ret = asyncns_getnameinfo_done(asyncns, q2, host, sizeof(host), serv, sizeof(serv));
-
-    if (ret)
+    /* Interpret the result of the addr -> name query */
+    if ((ret = asyncns_getnameinfo_done(asyncns, q2, host, sizeof(host), serv, sizeof(serv))))
         fprintf(stderr, "error: %s %i\n", gai_strerror(ret), ret);
-    else {
+    else
         printf("%s -- %s\n", host, serv);
-    }
-    
     
     r = 0;
 

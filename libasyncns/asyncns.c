@@ -1,5 +1,27 @@
-#define HAVE_PR_SET_PDEATHSIG
-#define HAVE_SETRESUID
+/* $Id$ */
+
+/***
+  This file is part of libasyncns.
+ 
+  libasyncns is free software; you can redistribute it and/or modify
+  it under the terms of the GNU Lesser General Public License as
+  published by the Free Software Foundation; either version 2 of the
+  License, or (at your option) any later version.
+ 
+  libasyncns is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+  General Public License for more details.
+ 
+  You should have received a copy of the GNU Lesser General Public
+  License along with libasyncns; if not, write to the Free Software
+  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+  USA.
+***/
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <assert.h>
 #include <fcntl.h>
@@ -14,7 +36,7 @@
 #include <sys/types.h>
 #include <pwd.h>
 
-#ifdef HAVE_PR_SET_PDEATHSIG
+#ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
 
@@ -143,9 +165,9 @@ static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *leng
 }
 
 static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo *ai) {
-    assert(out_fd >= 0);
     uint8_t data[BUFSIZE];
     addrinfo_response_t *resp = (addrinfo_response_t*) data;
+    assert(out_fd >= 0);
 
     resp->header.type = RESPONSE_ADDRINFO;
     resp->header.id = id;
@@ -165,11 +187,12 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
 }
 
 static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *host, const char *serv) {
-    assert(out_fd >= 0);
     uint8_t data[BUFSIZE];
     size_t hl, sl;
     nameinfo_response_t *resp = (nameinfo_response_t*) data;
 
+    assert(out_fd >= 0);
+    
     sl = serv ? strlen(serv)+1 : 0;
     hl = host ? strlen(host)+1 : 0;
 
@@ -257,6 +280,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
 static int worker(int in_fd, int out_fd) {
     int r = 0;
+    int have_death_sig = 0;
     assert(in_fd > 2);
     assert(out_fd > 2);
     
@@ -293,29 +317,31 @@ static int worker(int in_fd, int out_fd) {
     signal(SIGUSR1, SIG_IGN);
     signal(SIGUSR2, SIG_IGN);
 
-#ifdef HAVE_PR_SET_PDEATHSIG
-    prctl(PR_SET_PDEATHSIG, SIGTERM);
-#else
-    fd_nonblock(in_fd);
+#ifdef PR_SET_PDEATHSIG
+    if (prctl(PR_SET_PDEATHSIG, SIGTERM) >= 0)
+        have_death_sig = 1;
 #endif
+
+    if (!have_death_sig)
+        fd_nonblock(in_fd);
     
-    while (getppid() != 1) { /* if the parent PID is 1 our parent process died. */
+    while (getppid() > 1) { /* if the parent PID is 1 our parent process died. */
         char buf[BUFSIZE];
         ssize_t length;
 
-#ifndef HAVE_PR_SET_PDEATHSIG
-        fd_set fds;
-        struct timeval tv = { 0, 500000 } ;
-
-        FD_ZERO(&fds);
-        FD_SET(in_fd, &fds);
-
-        if (select(in_fd+1, &fds, NULL, NULL, &tv) < 0)
-            goto fail;
-
-        if (getppid() == 1)
-            break;
-#endif
+        if (!have_death_sig) {
+            fd_set fds;
+            struct timeval tv = { 0, 500000 } ;
+            
+            FD_ZERO(&fds);
+            FD_SET(in_fd, &fds);
+            
+            if (select(in_fd+1, &fds, NULL, NULL, &tv) < 0)
+                goto fail;
+            
+            if (getppid() == 1)
+                break;
+        }
         
         if ((length = recv(in_fd, buf, sizeof(buf), 0)) <= 0) {
 
@@ -578,6 +604,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
 }
 
 int asyncns_wait(asyncns_t *asyncns, int block) {
+    int handled = 0;
     assert(asyncns);
 
     for (;;) {
@@ -590,7 +617,7 @@ int asyncns_wait(asyncns_t *asyncns, int block) {
             if (errno != EAGAIN)
                 return -1;
 
-            if (!block)
+            if (!block || handled)
                 return 0;
                 
             FD_ZERO(&fds);
@@ -603,7 +630,10 @@ int asyncns_wait(asyncns_t *asyncns, int block) {
         }
 
 
-        return handle_response(asyncns, (rheader_t*) buf, (size_t) l);
+        if (handle_response(asyncns, (rheader_t*) buf, (size_t) l) < 0)
+            return -1;
+
+        handled = 1;
     }
 }
 

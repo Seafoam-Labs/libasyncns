@@ -37,15 +37,31 @@ fi
 
 # Checks for programs.
 AC_PROG_CC
+AC_PROG_CPP
+AC_PROG_INSTALL
+AC_PROG_LN_S
+AC_PROG_MAKE_SET
 
 # libtool stuff
 AC_PROG_LIBTOOL
 
 # Checks for header files.
 AC_HEADER_STDC
+AC_HEADER_SYS_WAIT
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h stdlib.h string.h sys/socket.h unistd.h sys/prctl.h])
 
-AC_CHECK_FUNCS(setresuid)
-AC_CHECK_FUNCS(setreuid)
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_TYPE_PID_T
+AC_TYPE_SIZE_T
+AC_HEADER_TIME
+
+# Checks for library functions.
+AC_FUNC_FORK
+AC_FUNC_MALLOC
+AC_FUNC_SELECT_ARGTYPES
+AC_TYPE_SIGNAL
+AC_CHECK_FUNCS([memset select strndup setresuid setreuid])
 
 # If using GCC specify some additional parameters
 if test "x$GCC" = "xyes" ; then
@@ -75,5 +91,5 @@ fi
 
 AM_CONDITIONAL([USE_LYNX], [test "x$lynx" = xyes])
 
-AC_CONFIG_FILES([Makefile libasyncns/Makefile])
+AC_CONFIG_FILES([Makefile libasyncns/Makefile doc/Makefile doc/README.html doxygen/Makefile doxygen/doxygen.conf libasyncns.pc])
 AC_OUTPUT

@@ -18,7 +18,7 @@
 # USA.
 
 EXTRA_DIST = bootstrap.sh README LICENSE
-SUBDIRS=libasyncns
+SUBDIRS=libasyncns doc doxygen
 
 MAINTAINERCLEANFILES=README
 noinst_DATA = README
@@ -43,6 +43,6 @@ distcleancheck:
 	@:
 
 doxygen:
-	$(MAKE) -C doxygen
+	$(MAKE) -C doxygen doxygen
 
 .PHONY: homepage distcleancheck doxygen
