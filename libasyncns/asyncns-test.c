@@ -23,7 +23,6 @@ int main(int argc, char *argv[]) {
         goto fail;
     }
 
-
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = inet_addr("192.168.50.1");

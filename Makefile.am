@@ -17,24 +17,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
 
-EXTRA_DIST = bootstrap.sh README LICENSE doxygen/Makefile.am doxygen/Makefile.in doxygen/doxygen.conf.in libtool.m4 ltdl.m4
-SUBDIRS=polyp doc libltdl
+EXTRA_DIST = bootstrap.sh README LICENSE
+SUBDIRS=libasyncns
 
 MAINTAINERCLEANFILES=README
 noinst_DATA = README
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = polyplib.pc polyplib-simple.pc polyplib-error.pc polyplib-mainloop.pc polyplib-browse.pc
-
-if HAVE_GLIB20
-pkgconfig_DATA += \
-	 polyplib-glib-mainloop.pc
-endif
-
-if HAVE_GLIB12
-pkgconfig_DATA += \
-	polyplib-glib12-mainloop.pc
-endif
+pkgconfig_DATA = libasyncns.pc
 
 README:
 	rm -f README

@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #define HAVE_PR_SET_PDEATHSIG
 #define HAVE_SETRESUID
 

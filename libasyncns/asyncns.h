@@ -1,6 +1,7 @@
 #ifndef fooasyncnshfoo
 #define fooasyncnshfoo
 
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 
