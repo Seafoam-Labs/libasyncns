@@ -1,5 +1,5 @@
-#ifndef fooaarhfoo
-#define fooaarhfoo
+#ifndef fooasyncnshfoo
+#define fooasyncnshfoo
 
 #include <sys/socket.h>
 #include <netdb.h>

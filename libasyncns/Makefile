@@ -1,7 +1,7 @@
 CFLAGS=-Wall -W -O0 -g -pipe
 
 
-asyncns-test: aar.o aar-test.o
+asyncns-test: asyncns.o asyncns-test.o
 	$(CC) -o $@ $^ $(LIBS) $(CFLAGS)
 
 clean:

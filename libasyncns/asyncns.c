@@ -19,7 +19,7 @@
 #include <sys/prctl.h>
 #endif
 
-#include "aar.h"
+#include "asyncns.h"
 
 #define MAX_WORKERS 16
 #define MAX_QUERIES 256
