@@ -63,6 +63,9 @@ AC_FUNC_SELECT_ARGTYPES
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([memset select strndup setresuid setreuid])
 
+AC_CHECK_LIB(nsl, gethostbyname)
+AC_CHECK_LIB(socket, connect)
+
 # If using GCC specify some additional parameters
 if test "x$GCC" = "xyes" ; then
    CFLAGS="$CFLAGS -pipe -W -Wall -pedantic"

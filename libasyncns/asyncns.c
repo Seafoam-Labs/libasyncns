@@ -121,6 +121,27 @@ typedef struct nameinfo_response {
     int ret;
 } nameinfo_response_t;
 
+#ifndef HAVE_STRNDUP
+
+static char *strndup(const char *s, size_t l) {
+    size_t a;
+    char *n;
+
+    a = strlen(s);
+    if (a > l)
+        a = l;
+
+    if (!(n = malloc(a+1)))
+        return NULL;
+
+    strncpy(n, s, a);
+    n[a] = 0;
+
+    return n;
+}
+
+#endif
+
 static int fd_nonblock(int fd) {
     int i;
     assert(fd >= 0);
@@ -301,7 +322,7 @@ static int worker(int in_fd, int out_fd) {
 #ifdef HAVE_SETRESUID            
             setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid);
 #elif HAVE_SETREUID
-            setuid(pw->pw_uid, pw->pw_uid);
+            setreuid(pw->pw_uid, pw->pw_uid);
 #else
             setuid(pw->pw_uid);
             seteuid(pw->pw_uid);
@@ -487,7 +508,7 @@ static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *len
     struct addrinfo *ai;
     assert(p);
     assert(ret_ai);
-    assert(index);
+    assert(length);
 
     if (*length < sizeof(addrinfo_serialization_t))
         return NULL;

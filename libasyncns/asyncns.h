@@ -44,6 +44,10 @@
 /** \example asyncns-test.c
  * An example program */
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 /** An opaque libasyncns session structure */
 typedef struct asyncns asyncns_t;
 
@@ -124,4 +128,8 @@ void asyncns_setuserdata(asyncns_t *asyncns, asyncns_query_t *q, void *userdata)
  * prior to this call it returns NULL. */
 void* asyncns_getuserdata(asyncns_t *asyncns, asyncns_query_t *q);
 
+#ifdef  __cplusplus
+}
+#endif
+    
 #endif

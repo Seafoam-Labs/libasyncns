@@ -86,7 +86,7 @@ documentation from the source tree)</p>
 
 <h2><a name="requirements">Requirements</a></h2>
 
-<p>Currently, <tt>libasyncns</tt> is tested on Linux only.</p>
+<p>Currently, <tt>libasyncns</tt> is tested on Linux and Solaris (<tt>sparc-sun-solaris2.8</tt>) only.</p>
 
 <p><tt>libasyncns</tt> was developed and tested on Debian GNU/Linux
 "testing" from January 2005, it should work on most other Linux

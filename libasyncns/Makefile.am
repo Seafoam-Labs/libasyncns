@@ -17,7 +17,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
 
-AM_CFLAGS=-D_GNU_SOURCE 
+AM_CFLAGS=-D_GNU_SOURCE -D__EXTENSIONS__ 
 
 lib_LTLIBRARIES=libasyncns.la
 libasyncns_la_SOURCES=asyncns.c asyncns.h
