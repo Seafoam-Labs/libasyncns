@@ -37,7 +37,7 @@
  * asyncns_getnameinfo(). Use asyncns_free() to shut down the worker
  * processes.
  *
- * Since libasyncns forks off new processes you have to make sure that
+ * Since libasyncns may fork off new processes you have to make sure that
  * your program is not irritated by spurious SIGCHLD signals.
  */
 
