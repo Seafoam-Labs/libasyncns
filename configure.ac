@@ -55,7 +55,6 @@ AC_C_CONST
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
 AC_HEADER_TIME
-
 # Checks for library functions.
 AC_FUNC_FORK
 AC_FUNC_MALLOC
@@ -65,6 +64,8 @@ AC_CHECK_FUNCS([memset select strndup setresuid setreuid])
 
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(socket, connect)
+
+ACX_PTHREAD
 
 # If using GCC specify some additional parameters
 if test "x$GCC" = "xyes" ; then

@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in sa;
     char host[NI_MAXHOST] = "", serv[NI_MAXSERV] = "";
 
-    if (!(asyncns = asyncns_new(5))) {
+    if (!(asyncns = asyncns_new(10))) {
         fprintf(stderr, "asyncns_new() failed\n");
         goto fail;
     }

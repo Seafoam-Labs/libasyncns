@@ -55,7 +55,7 @@ typedef struct asyncns asyncns_t;
 typedef struct asyncns_query asyncns_query_t;
 
 /** Allocate a new libasyncns session with n_proc worker processes */
-asyncns_t* asyncns_new(int n_proc);
+asyncns_t* asyncns_new(unsigned n_proc);
 
 /** Free a libasyncns session. This destroys all attached
  * asyncns_query_t objects automatically */
