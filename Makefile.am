@@ -37,7 +37,7 @@ homepage: all dist doxygen
 	cp libasyncns-@PACKAGE_VERSION@.tar.gz $$HOME/homepage/private/projects/libasyncns
 	cp doc/README.html doc/style.css $$HOME/homepage/private/projects/libasyncns
 	cp -a doxygen/html/* $$HOME/homepage/private/projects/libasyncns/doxygen
-	cp $$HOME/homepage/private/projects/libasyncns/README.html $$HOME/homepage/private/projects/libasyncns/index.html
+	ln -sf README.html $$HOME/homepage/private/projects/libasyncns/index.html
 
 distcleancheck:
 	@:
