@@ -155,6 +155,20 @@ static int fd_nonblock(int fd) {
     return fcntl(fd, F_SETFL, i | O_NONBLOCK);
 }
 
+static int fd_cloexec(int fd) {
+    int v;
+    assert(fd >= 0);
+
+    if ((v = fcntl(fd, F_GETFD, 0)) < 0)
+        return -1;
+
+    if (v & FD_CLOEXEC)
+        return 0;
+    
+    return fcntl(fd, F_SETFD, v | FD_CLOEXEC);
+}
+
+
 static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *length, size_t maxlength) {
     addrinfo_serialization_t *s = p;
     size_t cnl, l;
@@ -401,6 +415,11 @@ asyncns_t* asyncns_new(int n_proc) {
 
     if (socketpair(PF_UNIX, SOCK_DGRAM, 0, fd2) < 0)
         goto fail;
+
+    fd_cloexec(fd1[0]);
+    fd_cloexec(fd1[1]);
+    fd_cloexec(fd2[0]);
+    fd_cloexec(fd2[1]);
 
     if (n_proc > MAX_WORKERS)
         n_proc = MAX_WORKERS;
