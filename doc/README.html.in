@@ -70,7 +70,7 @@ DNS</a>, LDAP or NIS using standard <tt>libc</tt> NSS (Name Service
 Switch) modules. <tt>libasyncns</tt> is compatible with IPv6 if the
 underlying <tt>libc</tt> is too.</p>
 
-<p><tt>libasyncns</tt> is very tiny, consisting just of one header and one source file. It has no dependencies besides a <tt>libc</tt>.</p>
+<p><tt>libasyncns</tt> is very tiny, consisting of just one header and one source file. It has no dependencies besides a <tt>libc</tt>.</p>
 
 <h2><a name="status">Status</a></h2>
 
