@@ -26,3 +26,4 @@ noinst_PROGRAMS=asyncns-test
 asyncns_test_SOURCES=asyncns-test.c
 asyncns_test_LDADD=libasyncns.la
 
+include_HEADERS=asyncns.h
