@@ -68,9 +68,15 @@ allowing name resolution using techniques like <a
 href="http://0pointer.de/lennart/projects/nss-mdns/">Multicast
 DNS</a>, LDAP or NIS using standard <tt>libc</tt> NSS (Name Service
 Switch) modules. <tt>libasyncns</tt> is compatible with IPv6 if the
-underlying <tt>libc</tt> is too.</p>
+underlying <tt>libc</tt> is.</p>
 
-<p><tt>libasyncns</tt> is very tiny, consisting of just one header and one source file. It has no dependencies besides a <tt>libc</tt>.</p>
+<p><tt>libasyncns</tt> is very tiny, consisting of just one header and
+one source file. It has no dependencies besides <tt>libc</tt>.</p>
+
+<p>By default <tt>libasyncns</tt> spawns a number of worker threads
+(LWPs) to process name queries. Alternatively or when POSIX Threads
+are not supported, <tt>libasyncns</tt> can <tt>fork()</tt> off worker
+processes instead.</p>
 
 <h2><a name="status">Status</a></h2>
 
