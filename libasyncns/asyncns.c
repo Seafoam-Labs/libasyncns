@@ -31,25 +31,25 @@ typedef enum {
     RESPONSE_NAMEINFO
 } query_type_t;
 
-struct aar {
+struct asyncns {
     int in_fd, out_fd;
 
     pid_t workers[MAX_WORKERS];
 
     unsigned current_id, current_index;
-    aar_query_t* queries[MAX_QUERIES];
+    asyncns_query_t* queries[MAX_QUERIES];
 
-    aar_query_t *done_head, *done_tail;
+    asyncns_query_t *done_head, *done_tail;
 
     int n_queries;
 };
 
-struct aar_query {
-    aar_t *aar;
+struct asyncns_query {
+    asyncns_t *asyncns;
     int done;
     unsigned id;
     query_type_t type;
-    aar_query_t *done_next, *done_prev;
+    asyncns_query_t *done_next, *done_prev;
     int ret;
     struct addrinfo *addrinfo;
     char *serv, *host;
@@ -337,17 +337,17 @@ fail:
     return r;
 }
 
-aar_t* aar_new(int n_proc) {
-    aar_t *aar = NULL;
+asyncns_t* asyncns_new(int n_proc) {
+    asyncns_t *asyncns = NULL;
     int fd1[2] = { -1, -1 }, fd2[2] = { -1, -1 }, p;
 
     assert(n_proc >= 1);
 
-    if (!(aar = malloc(sizeof(aar_t))))
+    if (!(asyncns = malloc(sizeof(asyncns_t))))
         goto fail;
 
-    aar->in_fd = aar->out_fd = -1;
-    memset(aar->workers, 0, sizeof(aar->workers));
+    asyncns->in_fd = asyncns->out_fd = -1;
+    memset(asyncns->workers, 0, sizeof(asyncns->workers));
     
     if (socketpair(PF_UNIX, SOCK_DGRAM, 0, fd1) < 0)
         goto fail;
@@ -360,9 +360,9 @@ aar_t* aar_new(int n_proc) {
 
     for (p = 0; p < n_proc; p++) {
 
-        if ((aar->workers[p] = fork()) < 0)
+        if ((asyncns->workers[p] = fork()) < 0)
             goto fail;
-        else if (aar->workers[p] == 0) {
+        else if (asyncns->workers[p] == 0) {
             close(fd1[0]);
             close(fd2[1]);
             _exit(worker(fd2[0], fd1[1]));
@@ -371,21 +371,21 @@ aar_t* aar_new(int n_proc) {
 
     close(fd2[0]);
     close(fd1[1]);
-    aar->in_fd = fd1[0];
-    aar->out_fd = fd2[1];
+    asyncns->in_fd = fd1[0];
+    asyncns->out_fd = fd2[1];
 
-    aar->current_index = aar->current_id = 0;
+    asyncns->current_index = asyncns->current_id = 0;
 
     for (p = 0; p < MAX_QUERIES; p++)
-        aar->queries[p] = NULL;
-/*     memset(aar->queries, 0, sizeof(aar->queries)); */
+        asyncns->queries[p] = NULL;
+/*     memset(asyncns->queries, 0, sizeof(asyncns->queries)); */
 
-    aar->done_head = aar->done_tail = NULL;
-    aar->n_queries = 0;
+    asyncns->done_head = asyncns->done_tail = NULL;
+    asyncns->n_queries = 0;
 
-    fd_nonblock(aar->in_fd);
+    fd_nonblock(asyncns->in_fd);
 
-    return aar;
+    return asyncns;
 
 fail:
 
@@ -394,64 +394,64 @@ fail:
     if (fd2[0] >= 0) close(fd2[0]);
     if (fd2[1] >= 0) close(fd2[1]);
 
-    if (aar) 
-        aar_free(aar);
+    if (asyncns) 
+        asyncns_free(asyncns);
 
     return NULL;
 }
 
-void aar_free(aar_t *aar) {
+void asyncns_free(asyncns_t *asyncns) {
     int p;
-    assert(aar);
+    assert(asyncns);
     
-    if (aar->in_fd >= 0)
-        close(aar->in_fd);
-    if (aar->out_fd >= 0)
-        close(aar->out_fd);
+    if (asyncns->in_fd >= 0)
+        close(asyncns->in_fd);
+    if (asyncns->out_fd >= 0)
+        close(asyncns->out_fd);
     
     for (p = 0; p < MAX_WORKERS; p++)
-        if (aar->workers[p] >= 1) {
-            kill(aar->workers[p], SIGTERM);
-            waitpid(aar->workers[p], NULL, 0);
+        if (asyncns->workers[p] >= 1) {
+            kill(asyncns->workers[p], SIGTERM);
+            waitpid(asyncns->workers[p], NULL, 0);
         }
 
     for (p = 0; p < MAX_QUERIES; p++)
-        if (aar->queries[p])
-            aar_cancel(aar, aar->queries[p]);
+        if (asyncns->queries[p])
+            asyncns_cancel(asyncns, asyncns->queries[p]);
     
-    free(aar);
+    free(asyncns);
 }
 
-int aar_fd(aar_t *aar) {
-    assert(aar);
+int asyncns_fd(asyncns_t *asyncns) {
+    assert(asyncns);
 
-    return aar->in_fd;
+    return asyncns->in_fd;
 }
 
-static aar_query_t *lookup_query(aar_t *aar, unsigned id) {
-    aar_query_t *q;
-    assert(aar);
+static asyncns_query_t *lookup_query(asyncns_t *asyncns, unsigned id) {
+    asyncns_query_t *q;
+    assert(asyncns);
 
-    if ((q = aar->queries[id % MAX_QUERIES]))
+    if ((q = asyncns->queries[id % MAX_QUERIES]))
         if (q->id == id)
             return q;
 
     return NULL;
 }
 
-static void complete_query(aar_t *aar, aar_query_t *q) {
-    assert(aar);
+static void complete_query(asyncns_t *asyncns, asyncns_query_t *q) {
+    assert(asyncns);
     assert(q);
     assert(!q->done);
 
     q->done = 1;
     
-    if ((q->done_prev = aar->done_tail))
-        aar->done_tail->done_next = q;
+    if ((q->done_prev = asyncns->done_tail))
+        asyncns->done_tail->done_next = q;
     else
-        aar->done_head = q;
+        asyncns->done_head = q;
 
-    aar->done_tail = q;
+    asyncns->done_tail = q;
     q->done_next = NULL;
 }
 
@@ -503,19 +503,19 @@ static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *len
 
 fail:
     if (ai)
-        aar_freeaddrinfo(ai);
+        asyncns_freeaddrinfo(ai);
 
     return NULL;
 }
 
-static int handle_response(aar_t *aar, rheader_t *resp, size_t length) {
-    aar_query_t *q;
-    assert(aar);
+static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
+    asyncns_query_t *q;
+    assert(asyncns);
     assert(resp);
     assert(length >= sizeof(rheader_t));
     assert(length == resp->length);
 
-    if (!(q = lookup_query(aar, resp->id)))
+    if (!(q = lookup_query(asyncns, resp->id)))
         return 0;
     
     switch (resp->type) {
@@ -547,7 +547,7 @@ static int handle_response(aar_t *aar, rheader_t *resp, size_t length) {
                 prev = ai;
             }
 
-            complete_query(aar, q);
+            complete_query(asyncns, q);
             break;
         }
 
@@ -566,7 +566,7 @@ static int handle_response(aar_t *aar, rheader_t *resp, size_t length) {
                 q->serv = strndup((char*) ni_resp + sizeof(nameinfo_response_t) + ni_resp->hostlen, ni_resp->servlen-1);
                     
 
-            complete_query(aar, q);
+            complete_query(asyncns, q);
             break;
         }
             
@@ -577,14 +577,14 @@ static int handle_response(aar_t *aar, rheader_t *resp, size_t length) {
     return 0;
 }
 
-int aar_wait(aar_t *aar, int block) {
-    assert(aar);
+int asyncns_wait(asyncns_t *asyncns, int block) {
+    assert(asyncns);
 
     for (;;) {
         char buf[BUFSIZE];
         ssize_t l;
 
-        if (((l = recv(aar->in_fd, buf, sizeof(buf), 0)) < 0)) {
+        if (((l = recv(asyncns->in_fd, buf, sizeof(buf), 0)) < 0)) {
             fd_set fds;
 
             if (errno != EAGAIN)
@@ -594,43 +594,43 @@ int aar_wait(aar_t *aar, int block) {
                 return 0;
                 
             FD_ZERO(&fds);
-            FD_SET(aar->in_fd, &fds);
+            FD_SET(asyncns->in_fd, &fds);
 
-            if (select(aar->in_fd+1, &fds, NULL, NULL, NULL) < 0)
+            if (select(asyncns->in_fd+1, &fds, NULL, NULL, NULL) < 0)
                 return -1;
                 
             continue;
         }
 
 
-        return handle_response(aar, (rheader_t*) buf, (size_t) l);
+        return handle_response(asyncns, (rheader_t*) buf, (size_t) l);
     }
 }
 
-static aar_query_t *alloc_query(aar_t *aar) {
-    aar_query_t *q;
-    assert(aar);
+static asyncns_query_t *alloc_query(asyncns_t *asyncns) {
+    asyncns_query_t *q;
+    assert(asyncns);
 
-    if (aar->n_queries >= MAX_QUERIES)
+    if (asyncns->n_queries >= MAX_QUERIES)
         return NULL;
 
-    while (aar->queries[aar->current_index]) {
+    while (asyncns->queries[asyncns->current_index]) {
 
-        aar->current_index++;
-        aar->current_id++;
+        asyncns->current_index++;
+        asyncns->current_id++;
 
-        while (aar->current_index >= MAX_QUERIES)
-            aar->current_index -= MAX_QUERIES;
+        while (asyncns->current_index >= MAX_QUERIES)
+            asyncns->current_index -= MAX_QUERIES;
     }
         
-    if (!(q = aar->queries[aar->current_index] = malloc(sizeof(aar_query_t))))
+    if (!(q = asyncns->queries[asyncns->current_index] = malloc(sizeof(asyncns_query_t))))
         return NULL;
 
-    aar->n_queries++;
+    asyncns->n_queries++;
 
-    q->aar = aar;
+    q->asyncns = asyncns;
     q->done = 0;
-    q->id = aar->current_id;
+    q->id = asyncns->current_id;
     q->done_next = q->done_prev = NULL;
     q->ret = 0;
     q->addrinfo = NULL;
@@ -640,14 +640,14 @@ static aar_query_t *alloc_query(aar_t *aar) {
     return q;
 }
 
-aar_query_t* aar_getaddrinfo(aar_t *aar, const char *node, const char *service, const struct addrinfo *hints) {
+asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const char *service, const struct addrinfo *hints) {
     uint8_t data[BUFSIZE];
     addrinfo_request_t *req = (addrinfo_request_t*) data;
-    aar_query_t *q;
-    assert(aar);
+    asyncns_query_t *q;
+    assert(asyncns);
     assert(node || service);
 
-    if (!(q = alloc_query(aar)))
+    if (!(q = alloc_query(asyncns)))
         return NULL;
 
     memset(req, 0, sizeof(addrinfo_request_t));
@@ -675,23 +675,23 @@ aar_query_t* aar_getaddrinfo(aar_t *aar, const char *node, const char *service, 
     if (service)
         strcpy((char*) req + sizeof(addrinfo_request_t) + req->node_len, service);
 
-    if (send(aar->out_fd, req, req->header.length, 0) < 0)
+    if (send(asyncns->out_fd, req, req->header.length, 0) < 0)
         goto fail;
     
     return q;
 
 fail:
     if (q)
-        aar_cancel(aar, q);
+        asyncns_cancel(asyncns, q);
 
     return NULL;
 }
 
-int aar_getaddrinfo_done(aar_t *aar, aar_query_t* q, struct addrinfo **ret_res) {
+int asyncns_getaddrinfo_done(asyncns_t *asyncns, asyncns_query_t* q, struct addrinfo **ret_res) {
     int ret;
-    assert(aar);
+    assert(asyncns);
     assert(q);
-    assert(q->aar == aar);
+    assert(q->asyncns == asyncns);
     assert(q->type == REQUEST_ADDRINFO);
 
     if (!q->done)
@@ -700,21 +700,21 @@ int aar_getaddrinfo_done(aar_t *aar, aar_query_t* q, struct addrinfo **ret_res) 
     *ret_res = q->addrinfo;
     q->addrinfo = NULL;
     ret = q->ret;
-    aar_cancel(aar, q);
+    asyncns_cancel(asyncns, q);
 
     return ret;
 }
 
-aar_query_t* aar_getnameinfo(aar_t *aar, const struct sockaddr *sa, socklen_t salen, int flags, int gethost, int getserv) {
+asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *sa, socklen_t salen, int flags, int gethost, int getserv) {
     uint8_t data[BUFSIZE];
     nameinfo_request_t *req = (nameinfo_request_t*) data;
-    aar_query_t *q;
+    asyncns_query_t *q;
 
-    assert(aar);
+    assert(asyncns);
     assert(sa);
     assert(salen > 0);
 
-    if (!(q = alloc_query(aar)))
+    if (!(q = alloc_query(asyncns)))
         return NULL;
 
     memset(req, 0, sizeof(nameinfo_request_t));
@@ -733,23 +733,23 @@ aar_query_t* aar_getnameinfo(aar_t *aar, const struct sockaddr *sa, socklen_t sa
 
     memcpy((uint8_t*) req + sizeof(nameinfo_request_t), sa, salen);
 
-    if (send(aar->out_fd, req, req->header.length, 0) < 0)
+    if (send(asyncns->out_fd, req, req->header.length, 0) < 0)
         goto fail;
     
     return q;
 
 fail:
     if (q)
-        aar_cancel(aar, q);
+        asyncns_cancel(asyncns, q);
 
     return NULL;
 }
 
-int aar_getnameinfo_done(aar_t *aar, aar_query_t* q, char *ret_host, size_t hostlen, char *ret_serv, size_t servlen) {
+int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_host, size_t hostlen, char *ret_serv, size_t servlen) {
     int ret;
-    assert(aar);
+    assert(asyncns);
     assert(q);
-    assert(q->aar == aar);
+    assert(q->asyncns == asyncns);
     assert(q->type == REQUEST_NAMEINFO);
     assert(!ret_host || hostlen);
     assert(!ret_serv || servlen);
@@ -768,56 +768,56 @@ int aar_getnameinfo_done(aar_t *aar, aar_query_t* q, char *ret_host, size_t host
     }
     
     ret = q->ret;
-    aar_cancel(aar, q);
+    asyncns_cancel(asyncns, q);
 
     return ret;
 }
 
-aar_query_t* aar_getnext(aar_t *aar) {
-    assert(aar);
-    return aar->done_head;
+asyncns_query_t* asyncns_getnext(asyncns_t *asyncns) {
+    assert(asyncns);
+    return asyncns->done_head;
 }
 
-int aar_getnqueries(aar_t *aar) {
-    assert(aar);
-    return aar->n_queries;
+int asyncns_getnqueries(asyncns_t *asyncns) {
+    assert(asyncns);
+    return asyncns->n_queries;
 }
 
-void aar_cancel(aar_t *aar, aar_query_t* q) {
+void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q) {
     int i;
-    assert(aar);
+    assert(asyncns);
     assert(q);
-    assert(q->aar == aar);
-    assert(aar->n_queries > 0);
+    assert(q->asyncns == asyncns);
+    assert(asyncns->n_queries > 0);
 
     if (q->done) {
 
         if (q->done_prev)
             q->done_prev->done_next = q->done_next;
         else 
-            aar->done_head = q->done_next;
+            asyncns->done_head = q->done_next;
 
         if (q->done_next)
             q->done_next->done_prev = q->done_prev;
         else
-            aar->done_tail = q->done_prev;
+            asyncns->done_tail = q->done_prev;
     }
 
 
     i = q->id % MAX_QUERIES;
-    assert(aar->queries[i] == q);
-    aar->queries[i] = NULL;
+    assert(asyncns->queries[i] == q);
+    asyncns->queries[i] = NULL;
 
-    aar_freeaddrinfo(q->addrinfo);
+    asyncns_freeaddrinfo(q->addrinfo);
     free(q->addrinfo);
     free(q->host);
     free(q->serv);
 
-    aar->n_queries--;
+    asyncns->n_queries--;
     free(q);
 }
 
-void aar_freeaddrinfo(struct addrinfo *ai) {
+void asyncns_freeaddrinfo(struct addrinfo *ai) {
     if (!ai)
         return;
 
@@ -832,26 +832,26 @@ void aar_freeaddrinfo(struct addrinfo *ai) {
     }
 }
 
-int aar_isdone(aar_t *aar, aar_query_t*q) {
-    assert(aar);
+int asyncns_isdone(asyncns_t *asyncns, asyncns_query_t*q) {
+    assert(asyncns);
     assert(q);
-    assert(q->aar == aar);
+    assert(q->asyncns == asyncns);
 
     return q->done;
 }
 
-void aar_setuserdata(aar_t *aar, aar_query_t *q, void *userdata) {
+void asyncns_setuserdata(asyncns_t *asyncns, asyncns_query_t *q, void *userdata) {
     assert(q);
-    assert(aar);
-    assert(q->aar = aar);
+    assert(asyncns);
+    assert(q->asyncns = asyncns);
     
     q->userdata = userdata;
 }
 
-void* aar_getuserdata(aar_t *aar, aar_query_t *q) {
+void* asyncns_getuserdata(asyncns_t *asyncns, asyncns_query_t *q) {
     assert(q);
-    assert(aar);
-    assert(q->aar = aar);
+    assert(asyncns);
+    assert(q->asyncns = asyncns);
 
     return q->userdata;
 }

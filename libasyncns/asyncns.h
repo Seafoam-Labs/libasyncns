@@ -5,33 +5,33 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-struct aar;
-typedef struct aar aar_t;
+struct asyncns;
+typedef struct asyncns asyncns_t;
 
-struct aar_query;
-typedef struct aar_query aar_query_t;
+struct asyncns_query;
+typedef struct asyncns_query asyncns_query_t;
 
-aar_t* aar_new(int n_proc);
-void aar_free(aar_t *aar);
-int aar_fd(aar_t *aar);
-int aar_wait(aar_t *aar, int block);
+asyncns_t* asyncns_new(int n_proc);
+void asyncns_free(asyncns_t *asyncns);
+int asyncns_fd(asyncns_t *asyncns);
+int asyncns_wait(asyncns_t *asyncns, int block);
 
-aar_query_t* aar_getaddrinfo(aar_t *aar, const char *node, const char *service, const struct addrinfo *hints);
-int aar_getaddrinfo_done(aar_t *aar, aar_query_t* q, struct addrinfo **ret_res);
+asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const char *service, const struct addrinfo *hints);
+int asyncns_getaddrinfo_done(asyncns_t *asyncns, asyncns_query_t* q, struct addrinfo **ret_res);
 
-aar_query_t* aar_getnameinfo(aar_t *aar, const struct sockaddr *sa, socklen_t salen, int flags, int gethost, int getserv);
-int aar_getnameinfo_done(aar_t *aar, aar_query_t* q, char *ret_host, size_t hostlen, char *ret_serv, size_t servlen);
+asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *sa, socklen_t salen, int flags, int gethost, int getserv);
+int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_host, size_t hostlen, char *ret_serv, size_t servlen);
 
-aar_query_t* aar_getnext(aar_t *aar);
-int aar_getnqueries(aar_t *aar);
+asyncns_query_t* asyncns_getnext(asyncns_t *asyncns);
+int asyncns_getnqueries(asyncns_t *asyncns);
 
-void aar_cancel(aar_t *aar, aar_query_t* q);
+void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q);
 
-void aar_freeaddrinfo(struct addrinfo *ai);
+void asyncns_freeaddrinfo(struct addrinfo *ai);
 
-int aar_isdone(aar_t *aar, aar_query_t*q);
+int asyncns_isdone(asyncns_t *asyncns, asyncns_query_t*q);
 
-void aar_setuserdata(aar_t *aar, aar_query_t *q, void *userdata);
-void* aar_getuserdata(aar_t *aar, aar_query_t *q);
+void asyncns_setuserdata(asyncns_t *asyncns, asyncns_query_t *q, void *userdata);
+void* asyncns_getuserdata(asyncns_t *asyncns, asyncns_query_t *q);
 
 #endif
