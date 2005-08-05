@@ -686,7 +686,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             const nameinfo_response_t *ni_resp = (nameinfo_response_t*) resp;
 
             assert(length >= sizeof(nameinfo_response_t));
-            assert(q->type = REQUEST_NAMEINFO);
+            assert(q->type == REQUEST_NAMEINFO);
 
             q->ret = ni_resp->ret;
 
