@@ -109,7 +109,8 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
  * asyncns_wait() before this function will return sensible data.  */
 asyncns_query_t* asyncns_getnext(asyncns_t *asyncns);
 
-/** Return the number of query objects (completed or not) attached to this session */
+/** Return the number of query objects (completed or not) attached to
+ * this session */
 int asyncns_getnqueries(asyncns_t *asyncns);
 
 /** Cancel a currently running query. q is is destroyed by this call

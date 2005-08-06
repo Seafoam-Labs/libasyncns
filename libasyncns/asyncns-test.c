@@ -41,16 +41,13 @@ int main(int argc, char *argv[]) {
     }
 
     /* Make a name -> address query */
-    
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = PF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
 
     q1 = asyncns_getaddrinfo(asyncns, argc >= 2 ? argv[1] : "www.heise.de", NULL, &hints);
 
-
     /* Make an address -> name query */
-    
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
     sa.sin_addr.s_addr = inet_addr(argc >= 3 ? argv[2] : "193.99.144.71");
@@ -58,9 +55,7 @@ int main(int argc, char *argv[]) {
     
     q2 = asyncns_getnameinfo(asyncns, (struct sockaddr*) &sa, sizeof(sa), 0, 1, 1); 
 
-
     /* Wait until the two queries are completed */
-    
     while (!asyncns_isdone(asyncns, q1) || !asyncns_isdone(asyncns, q2)) {
         if (asyncns_wait(asyncns, 1) < 0)
             goto fail;
