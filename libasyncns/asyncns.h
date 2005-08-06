@@ -66,9 +66,11 @@ void asyncns_free(asyncns_t *asyncns);
  * loop. */
 int asyncns_fd(asyncns_t *asyncns);
 
-/** Process pending responses. If block is non-zero wait until at
- * least one response has been processed. If block is zero, process
- * all pending responses and return. */
+/** Process pending responses. After this function is called you can
+ * get the next completed query object(s) using asyncns_getnext(). If
+ * block is non-zero wait until at least one response has been
+ * processed. If block is zero, process all pending responses and
+ * return. */
 int asyncns_wait(asyncns_t *asyncns, int block);
 
 /** Issue a name to address query on the specified session. The
@@ -102,7 +104,9 @@ asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *
  * returned. */
 int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_host, size_t hostlen, char *ret_serv, size_t servlen);
 
-/** Return the next completed query object. If no query has been completed yet, return NULL */
+/** Return the next completed query object. If no query has been
+ * completed yet, return NULL. Please note that you need to run
+ * asyncns_wait() before this function will return sensible data.  */
 asyncns_query_t* asyncns_getnext(asyncns_t *asyncns);
 
 /** Return the number of query objects (completed or not) attached to this session */
