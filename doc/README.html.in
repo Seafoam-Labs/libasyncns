@@ -10,7 +10,7 @@
 <body>
 <h1><a name="top">libasyncns @PACKAGE_VERSION@</a></h1>
 
-<p><i>Copyright 2004 Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;</i></p>
+<p><i>Copyright 2005-2007 Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;</i></p>
 
 <ul class="toc">
     <li><a href="#license">License</a></li>
@@ -42,6 +42,10 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
 
 <h2><a name="news">News</a></h2>
 
+<div class="news-date">Fri 16 Feb 2007: </div> <p class="news-text"><a
+href="@PACKAGE_URL@libasyncns-0.2.tar.gz">Version 0.2</a> released;
+changes include: <tt>res_query()</tt> support</p>
+
 <div class="news-date">Sat 8 Jan 2005: </div> <p class="news-text"><a
 href="@PACKAGE_URL@libasyncns-0.1.tar.gz">Version 0.1</a> released</p>
 
@@ -49,8 +53,8 @@ href="@PACKAGE_URL@libasyncns-0.1.tar.gz">Version 0.1</a> released</p>
 
 <p><tt>libasyncns</tt> is a C library for Linux/Unix for executing name
 service queries asynchronously. It is an asynchronous wrapper around
-<tt>getaddrinfo(3)</tt>, <tt>getnameinfo(3)</tt>, <tt>res_query(3)<tt> and
-<tt>res_search(3)</tt> from the <tt>libc</tt>.</p>
+<tt>getaddrinfo(3)</tt>, <tt>getnameinfo(3)</tt>, <tt>res_query(3)</tt> and
+<tt>res_search(3)</tt> from <tt>libc</tt> and <tt>libresolv</tt>.</p>
 
 <p>In contrast to GNU's asynchronous name resolving API
 <tt>getaddrinfo_a()</tt>, <tt>libasyncns</tt> does not make use of
@@ -100,7 +104,7 @@ distributions (and maybe Unix versions) since it uses GNU autoconf and
 GNU libtool for source code configuration and shared library
 management.</p>
 
-<p><tt>libasyncns</tt> has no dependencies besides a <tt>libc</tt> that supports <tt>getaddrinfo()</tt>.</p>
+<p><tt>libasyncns</tt> has no dependencies besides a <tt>libc</tt> that supports <tt>getaddrinfo()</tt> and <tt>res_query()</tt>.</p>
  
 <h2><a name="installation">Installation</a></h2>
 
@@ -112,7 +116,7 @@ compilation and <tt>make install</tt> (as root) for installation of
 
 <h2><a name="acks">Acknowledgements</a></h2>
 
-<p>None so far</p>
+<p>Sjoerd Simons for the <tt>res_query()</tt> support.</p>
 
 <h2><a name="download">Download</a></h2>
 
@@ -127,7 +131,7 @@ compilation and <tt>make install</tt> (as root) for installation of
 <p>If you want to be notified whenever I release a new version of this software use the subscription feature of <a href="http://freshmeat.net/projects/libasyncns/">Freshmeat</a>.</p>
 
 <hr/>
-<address class="grey">Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;, January 2005</address>
+<address class="grey">Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;, February 2007</address>
 <div class="grey"><i>$Id$</i></div>
 
 </body>
