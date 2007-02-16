@@ -16,7 +16,7 @@
     <li><a href="#license">License</a></li>
     <li><a href="#news">News</a></li>
     <li><a href="#overview">Overview</a></li>
-    <li><a href="#status">Status</a></li>
+    <li><a href="#status">Current Status</a></li>
     <li><a href="#documentation">Documentation</a></li>
     <li><a href="#requirements">Requirements</a></li>
     <li><a href="#installation">Installation</a></li>
@@ -82,7 +82,7 @@ one source file. It has no dependencies besides <tt>libc</tt>.</p>
 are not supported, <tt>libasyncns</tt> can <tt>fork()</tt> off worker
 processes instead.</p>
 
-<h2><a name="status">Status</a></h2>
+<h2><a name="status">Current Status</a></h2>
 
 <p>Version @PACKAGE_VERSION@ is quite stable and feature complete.</p>
 
@@ -127,6 +127,9 @@ compilation and <tt>make install</tt> (as root) for installation of
 <p>Get <tt>libasyncns</tt>'s development sources from the <a href="http://subversion.tigris.org/">Subversion</a> <a href="svn://svn.0pointer.de/libasyncns">repository</a> (<a href="http://0pointer.de/cgi-bin/viewcvs.cgi/?root=libasyncns">viewcvs</a>): </p>
 
 <pre>svn checkout svn://svn.0pointer.de/libasyncns/trunk libasyncns</pre>
+
+<p>You may find an up to date Debian package of <tt>libasyncns</tt> on the <a href="http://packages.debian.org/libasyncns0">Debian package repository</a>.</p>
+
 
 <p>If you want to be notified whenever I release a new version of this software use the subscription feature of <a href="http://freshmeat.net/projects/libasyncns/">Freshmeat</a>.</p>
 
