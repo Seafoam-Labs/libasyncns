@@ -22,7 +22,7 @@ AM_LIBADD=$(PTHREAD_LIBS)
 AM_LDADD=$(PTHREAD_LIBS)
 
 lib_LTLIBRARIES=libasyncns.la
-libasyncns_la_LIBADD=$(AM_LIBADD) 
+libasyncns_la_LIBADD=$(AM_LIBADD) -lresolv
 libasyncns_la_CC=$(PTHREAD_CC)
 libasyncns_la_SOURCES=asyncns.c asyncns.h
 

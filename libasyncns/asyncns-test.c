@@ -24,16 +24,21 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <netinet/in.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
+#include <assert.h>
 
 #include "asyncns.h"
 
 int main(int argc, char *argv[]) {
     asyncns_t* asyncns = NULL;
-    asyncns_query_t *q1, *q2;
+    asyncns_query_t *q1, *q2, *q3;
     int r = 1, ret;
     struct addrinfo *ai, hints;
     struct sockaddr_in sa;
     char host[NI_MAXHOST] = "", serv[NI_MAXSERV] = "";
+    unsigned char *srv;
 
     if (!(asyncns = asyncns_new(10))) {
         fprintf(stderr, "asyncns_new() failed\n");
@@ -55,8 +60,12 @@ int main(int argc, char *argv[]) {
     
     q2 = asyncns_getnameinfo(asyncns, (struct sockaddr*) &sa, sizeof(sa), 0, 1, 1); 
 
+    q3 = asyncns_res_query(asyncns, "_xmpp-client._tcp.gmail.com", C_IN, T_SRV); 
+
     /* Wait until the two queries are completed */
-    while (!asyncns_isdone(asyncns, q1) || !asyncns_isdone(asyncns, q2)) {
+    while (!asyncns_isdone(asyncns, q1) 
+           || !asyncns_isdone(asyncns, q2)
+           || !asyncns_isdone(asyncns, q3)) {
         if (asyncns_wait(asyncns, 1) < 0)
             goto fail;
     }
@@ -87,6 +96,52 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "error: %s %i\n", gai_strerror(ret), ret);
     else
         printf("%s -- %s\n", host, serv);
+
+    /* Interpret the result of the SRV lookup */
+    if ((ret = asyncns_res_done(asyncns, q3, &srv)) < 0) {
+        fprintf(stderr, "error: %s %i\n", strerror(ret), ret);
+    } else if (ret == 0) { 
+      fprintf(stderr, "No reply for SRV lookup\n");
+    } else {
+      int qdcount;
+      int ancount;
+      int len;
+      const unsigned char *pos = srv + sizeof(HEADER);
+      unsigned char *end = srv + ret;
+      HEADER *head = (HEADER *)srv;
+
+      qdcount = ntohs(head->qdcount);
+      ancount = ntohs(head->ancount);
+
+      char name[256];
+
+      printf("%d answers for srv lookup:\n", ancount);
+
+      /* Ignore the questions */
+      while (qdcount-- > 0 && (len = dn_expand(srv, end, pos, name, 255)) >= 0) {
+        assert(len >= 0);
+        pos += len + QFIXEDSZ;
+      }
+
+      /* Parse the answers */
+      while (ancount-- > 0 && (len = dn_expand(srv, end, pos, name, 255)) >= 0) {
+        /* Ignore the initial string */
+        uint16_t pref, weight, port;
+        assert(len >= 0);
+        pos += len;
+        /* Ignore type, ttl, class and dlen */
+        pos += 10;
+        
+        GETSHORT(pref, pos);
+        GETSHORT(weight, pos);
+        GETSHORT(port, pos);
+        len = dn_expand(srv, end, pos, name, 255); 
+        printf("\tpreference: %2d weight: %2d port: %d host: %s\n",
+               pref, weight, port, name);
+
+        pos += len;
+      }
+    }
     
     r = 0;
 

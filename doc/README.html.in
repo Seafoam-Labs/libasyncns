@@ -49,8 +49,8 @@ href="@PACKAGE_URL@libasyncns-0.1.tar.gz">Version 0.1</a> released</p>
 
 <p><tt>libasyncns</tt> is a C library for Linux/Unix for executing name
 service queries asynchronously. It is an asynchronous wrapper around
-<tt>getaddrinfo(3)</tt> and <tt>getnameinfo(3)</tt> from the
-<tt>libc</tt>.</p>
+<tt>getaddrinfo(3)</tt>, <tt>getnameinfo(3)</tt>, <tt>res_query(3)<tt> and
+<tt>res_search(3)</tt> from the <tt>libc</tt>.</p>
 
 <p>In contrast to GNU's asynchronous name resolving API
 <tt>getaddrinfo_a()</tt>, <tt>libasyncns</tt> does not make use of
@@ -120,9 +120,9 @@ compilation and <tt>make install</tt> (as root) for installation of
 
 <p>The current release is <a href="@PACKAGE_URL@libasyncns-@PACKAGE_VERSION@.tar.gz">@PACKAGE_VERSION@</a></p>
 
-<p>Get <tt>libasyncns</tt>'s development sources from the <a href="http://subversion.tigris.org/">Subversion</a> <a href="svn://seth.intheinter.net/libasyncns">repository</a> (<a href="http://0pointer.de/cgi-bin/viewcvs.cgi/?root=libasyncns">viewcvs</a>): </p>
+<p>Get <tt>libasyncns</tt>'s development sources from the <a href="http://subversion.tigris.org/">Subversion</a> <a href="svn://svn.0pointer.de/libasyncns">repository</a> (<a href="http://0pointer.de/cgi-bin/viewcvs.cgi/?root=libasyncns">viewcvs</a>): </p>
 
-<pre>svn checkout svn://seth.intheinter.net/libasyncns/trunk libasyncns</pre>
+<pre>svn checkout svn://svn.0pointer.de/libasyncns/trunk libasyncns</pre>
 
 <p>If you want to be notified whenever I release a new version of this software use the subscription feature of <a href="http://freshmeat.net/projects/libasyncns/">Freshmeat</a>.</p>
 

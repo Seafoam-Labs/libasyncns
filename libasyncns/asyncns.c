@@ -37,6 +37,10 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <pwd.h>
+#include <netinet/in.h>
+#include <arpa/nameser.h>
+#include <resolv.h>
+
 
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -57,6 +61,9 @@ typedef enum {
     RESPONSE_ADDRINFO,
     REQUEST_NAMEINFO,
     RESPONSE_NAMEINFO,
+    REQUEST_RES_QUERY,
+    REQUEST_RES_SEARCH,
+    RESPONSE_RES,
     REQUEST_TERMINATE
 } query_type_t;
 
@@ -139,6 +146,18 @@ typedef struct nameinfo_response {
     size_t hostlen, servlen;
     int ret;
 } nameinfo_response_t;
+
+typedef struct res_query_request {
+  struct rheader header;
+  int class;
+  int type;
+  size_t dlen;
+} res_request_t;
+
+typedef struct res_query_response {
+  struct rheader header;
+  int ret;
+} res_response_t;
 
 #ifndef HAVE_STRNDUP
 
@@ -271,6 +290,25 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     return send(out_fd, resp, resp->header.length, 0);
 }
 
+static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, int ret) {
+    uint8_t data[BUFSIZE];
+    res_response_t *resp = (res_response_t *) data;
+
+    assert(out_fd >= 0);
+    
+    resp->header.type = RESPONSE_RES;
+    resp->header.id = id;
+    resp->header.length = sizeof(res_response_t) + (ret < 0 ? 0 : ret);
+    resp->ret = (ret < 0) ? -errno : ret;
+
+    assert(sizeof(data) >= resp->header.length);
+    
+    if (ret > 0)
+        memcpy(data + sizeof(res_response_t), answer, ret);
+
+    return send(out_fd, resp, resp->header.length, 0);
+}
+
 static int handle_request(int out_fd, const rheader_t *req, size_t length) {
     assert(out_fd >= 0);
     assert(req);
@@ -323,6 +361,28 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             return send_nameinfo_reply(out_fd, req->id, ret,
                                        ret == 0 && ni_req->gethost ? hostbuf : NULL,
                                        ret == 0 && ni_req->getserv ? servbuf : NULL);
+        }
+
+        case REQUEST_RES_QUERY: 
+        case REQUEST_RES_SEARCH: {
+          int ret;
+          unsigned char answer[BUFSIZE];
+          const res_request_t *res_req = (res_request_t *)req;
+          const char *dname;
+
+          assert(length >= sizeof(res_request_t));
+          assert(length == sizeof(res_request_t) + res_req->dlen);
+
+          dname = (const char *) req + sizeof(res_request_t);
+
+          if (req->type == REQUEST_RES_QUERY) { 
+            ret = res_query(dname, res_req->class, res_req->type, 
+                            answer, BUFSIZE);
+          } else {
+            ret = res_search(dname, res_req->class, res_req->type, 
+                            answer, BUFSIZE);
+          }
+          return send_res_reply(out_fd, req->id, answer, ret);
         }
 
         case REQUEST_TERMINATE: {
@@ -700,6 +760,23 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             complete_query(asyncns, q);
             break;
         }
+
+        case RESPONSE_RES: {
+          const res_response_t *res_resp = (res_response_t *)resp;
+
+          assert(length >= sizeof(res_response_t));
+          assert(q->type == REQUEST_RES_QUERY || q->type == REQUEST_RES_SEARCH);
+
+          q->ret = res_resp->ret;
+
+          if (res_resp->ret >= 0)  {
+            q->serv = malloc(res_resp->ret);
+            memcpy(q->serv, (char *)resp + sizeof(res_response_t), res_resp->ret);
+          }
+
+          complete_query(asyncns, q);
+          break;
+        }
             
         default:
             ;
@@ -903,6 +980,78 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
     }
     
     ret = q->ret;
+    asyncns_cancel(asyncns, q);
+
+    return ret;
+}
+
+static asyncns_query_t *
+asyncns_res(asyncns_t *asyncns, query_type_t qtype, 
+            const char *dname, int class, int type) {
+    uint8_t data[BUFSIZE];
+    res_request_t *req = (res_request_t*) data;
+    asyncns_query_t *q;
+    size_t dlen;
+
+    assert(asyncns);
+    assert(dname);
+
+    dlen = strlen(dname);
+
+    if (!(q = alloc_query(asyncns)))
+        return NULL;
+
+    memset(req, 0, sizeof(res_request_t));
+    
+    req->header.id = q->id;
+    req->header.type = q->type = qtype;
+    req->header.length = sizeof(res_request_t) + dlen;
+
+    if (req->header.length > BUFSIZE)
+        goto fail;
+
+    req->class = class;
+    req->type = type;
+    req->dlen = dlen;
+
+    memcpy((uint8_t*) req + sizeof(res_request_t), dname, dlen);
+
+    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
+        goto fail;
+    
+    return q;
+
+fail:
+    if (q)
+        asyncns_cancel(asyncns, q);
+
+    return NULL;
+}
+
+asyncns_query_t* asyncns_res_query(asyncns_t *asyncns, const char *dname, int class, int type) { 
+  return asyncns_res(asyncns, REQUEST_RES_QUERY, dname, class, type);
+}
+
+asyncns_query_t* asyncns_res_search(asyncns_t *asyncns, const char *dname, int class, int type) { 
+  return asyncns_res(asyncns, REQUEST_RES_SEARCH, dname, class, type);
+}
+
+int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char **answer) {
+    int ret;
+    assert(asyncns);
+    assert(q);
+    assert(q->asyncns == asyncns);
+    assert(q->type == REQUEST_RES_QUERY || q->type == REQUEST_RES_SEARCH);
+    assert(answer);
+
+    if (!q->done)
+        return -EAGAIN;
+
+    *answer = (unsigned char *)q->serv;
+    q->serv = NULL;
+
+    ret = q->ret;
+
     asyncns_cancel(asyncns, q);
 
     return ret;
