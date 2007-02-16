@@ -39,10 +39,7 @@ homepage: all dist doxygen
 	cp -a doxygen/html/* $$HOME/homepage/private/projects/libasyncns/doxygen
 	ln -sf README.html $$HOME/homepage/private/projects/libasyncns/index.html
 
-distcleancheck:
-	@:
-
 doxygen:
 	$(MAKE) -C doxygen doxygen
 
-.PHONY: homepage distcleancheck doxygen
+.PHONY: homepage doxygen

@@ -17,17 +17,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
 
-AM_CFLAGS=-D_GNU_SOURCE -D__EXTENSIONS__ $(PTHREAD_CFLAGS)
-AM_LIBADD=$(PTHREAD_LIBS)
-AM_LDADD=$(PTHREAD_LIBS)
+AM_CFLAGS=-D__EXTENSIONS__ $(PTHREAD_CFLAGS)
 
 lib_LTLIBRARIES=libasyncns.la
-libasyncns_la_LIBADD=$(AM_LIBADD) -lresolv
 libasyncns_la_CC=$(PTHREAD_CC)
 libasyncns_la_SOURCES=asyncns.c asyncns.h
+libasyncns_la_LDFLAGS=-version-info $(LIBASYNCNS_VERSION_INFO)
+libasyncns_la_LIBADD=$(PTHREAD_LIBS)
 
 noinst_PROGRAMS=asyncns-test
+asyncns_test_CC=$(PTHREAD_CC)
 asyncns_test_SOURCES=asyncns-test.c
-asyncns_test_LDADD=$(AM_LDADD) libasyncns.la
+asyncns_test_LDADD=libasyncns.la $(PTHREAD_LIBS)
 
 include_HEADERS=asyncns.h
