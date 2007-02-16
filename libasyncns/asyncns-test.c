@@ -19,6 +19,10 @@
   USA.
 ***/
 
+#if HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -60,9 +64,10 @@ int main(int argc, char *argv[]) {
     
     q2 = asyncns_getnameinfo(asyncns, (struct sockaddr*) &sa, sizeof(sa), 0, 1, 1); 
 
+    /* Make a res_query() call */
     q3 = asyncns_res_query(asyncns, "_xmpp-client._tcp.gmail.com", C_IN, T_SRV); 
 
-    /* Wait until the two queries are completed */
+    /* Wait until the three queries are completed */
     while (!asyncns_isdone(asyncns, q1) 
            || !asyncns_isdone(asyncns, q2)
            || !asyncns_isdone(asyncns, q3)) {
@@ -101,46 +106,45 @@ int main(int argc, char *argv[]) {
     if ((ret = asyncns_res_done(asyncns, q3, &srv)) < 0) {
         fprintf(stderr, "error: %s %i\n", strerror(ret), ret);
     } else if (ret == 0) { 
-      fprintf(stderr, "No reply for SRV lookup\n");
+        fprintf(stderr, "No reply for SRV lookup\n");
     } else {
-      int qdcount;
-      int ancount;
-      int len;
-      const unsigned char *pos = srv + sizeof(HEADER);
-      unsigned char *end = srv + ret;
-      HEADER *head = (HEADER *)srv;
+        int qdcount;
+        int ancount;
+        int len;
+        const unsigned char *pos = srv + sizeof(HEADER);
+        unsigned char *end = srv + ret;
+        HEADER *head = (HEADER *)srv;
+        char name[256];
 
-      qdcount = ntohs(head->qdcount);
-      ancount = ntohs(head->ancount);
+        qdcount = ntohs(head->qdcount);
+        ancount = ntohs(head->ancount);
 
-      char name[256];
+        printf("%d answers for srv lookup:\n", ancount);
 
-      printf("%d answers for srv lookup:\n", ancount);
+        /* Ignore the questions */
+        while (qdcount-- > 0 && (len = dn_expand(srv, end, pos, name, 255)) >= 0) {
+            assert(len >= 0);
+            pos += len + QFIXEDSZ;
+        }
 
-      /* Ignore the questions */
-      while (qdcount-- > 0 && (len = dn_expand(srv, end, pos, name, 255)) >= 0) {
-        assert(len >= 0);
-        pos += len + QFIXEDSZ;
-      }
-
-      /* Parse the answers */
-      while (ancount-- > 0 && (len = dn_expand(srv, end, pos, name, 255)) >= 0) {
-        /* Ignore the initial string */
-        uint16_t pref, weight, port;
-        assert(len >= 0);
-        pos += len;
-        /* Ignore type, ttl, class and dlen */
-        pos += 10;
+        /* Parse the answers */
+        while (ancount-- > 0 && (len = dn_expand(srv, end, pos, name, 255)) >= 0) {
+            /* Ignore the initial string */
+            uint16_t pref, weight, port;
+            assert(len >= 0);
+            pos += len;
+            /* Ignore type, ttl, class and dlen */
+            pos += 10;
         
-        GETSHORT(pref, pos);
-        GETSHORT(weight, pos);
-        GETSHORT(port, pos);
-        len = dn_expand(srv, end, pos, name, 255); 
-        printf("\tpreference: %2d weight: %2d port: %d host: %s\n",
-               pref, weight, port, name);
+            GETSHORT(pref, pos);
+            GETSHORT(weight, pos);
+            GETSHORT(port, pos);
+            len = dn_expand(srv, end, pos, name, 255); 
+            printf("\tpreference: %2d weight: %2d port: %d host: %s\n",
+                   pref, weight, port, name);
 
-        pos += len;
-      }
+            pos += len;
+        }
     }
     
     r = 0;

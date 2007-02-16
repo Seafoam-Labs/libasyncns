@@ -41,7 +41,6 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 
-
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -148,15 +147,15 @@ typedef struct nameinfo_response {
 } nameinfo_response_t;
 
 typedef struct res_query_request {
-  struct rheader header;
-  int class;
-  int type;
-  size_t dlen;
+    struct rheader header;
+    int class;
+    int type;
+    size_t dlen;
 } res_request_t;
 
 typedef struct res_query_response {
-  struct rheader header;
-  int ret;
+    struct rheader header;
+    int ret;
 } res_response_t;
 
 #ifndef HAVE_STRNDUP
@@ -318,7 +317,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
     switch (req->type) {
         case REQUEST_ADDRINFO: {
             struct addrinfo ai, *result = NULL;
-            const addrinfo_request_t *ai_req = (addrinfo_request_t*) req;
+            const addrinfo_request_t *ai_req = (const addrinfo_request_t*) req;
             const char *node, *service;
             int ret;
 
@@ -344,7 +343,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
         case REQUEST_NAMEINFO: {
             int ret;
-            const nameinfo_request_t *ni_req = (nameinfo_request_t*) req;
+            const nameinfo_request_t *ni_req = (const nameinfo_request_t*) req;
             char hostbuf[NI_MAXHOST], servbuf[NI_MAXSERV];
             const struct sockaddr *sa;
             
@@ -365,24 +364,24 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
         case REQUEST_RES_QUERY: 
         case REQUEST_RES_SEARCH: {
-          int ret;
-          unsigned char answer[BUFSIZE];
-          const res_request_t *res_req = (res_request_t *)req;
-          const char *dname;
+            int ret;
+            unsigned char answer[BUFSIZE];
+            const res_request_t *res_req = (const res_request_t *)req;
+            const char *dname;
 
-          assert(length >= sizeof(res_request_t));
-          assert(length == sizeof(res_request_t) + res_req->dlen);
+            assert(length >= sizeof(res_request_t));
+            assert(length == sizeof(res_request_t) + res_req->dlen);
 
-          dname = (const char *) req + sizeof(res_request_t);
+            dname = (const char *) req + sizeof(res_request_t);
 
-          if (req->type == REQUEST_RES_QUERY) { 
-            ret = res_query(dname, res_req->class, res_req->type, 
-                            answer, BUFSIZE);
-          } else {
-            ret = res_search(dname, res_req->class, res_req->type, 
-                            answer, BUFSIZE);
-          }
-          return send_res_reply(out_fd, req->id, answer, ret);
+            if (req->type == REQUEST_RES_QUERY) { 
+                ret = res_query(dname, res_req->class, res_req->type, 
+                                answer, BUFSIZE);
+            } else {
+                ret = res_search(dname, res_req->class, res_req->type, 
+                                 answer, BUFSIZE);
+            }
+            return send_res_reply(out_fd, req->id, answer, ret);
         }
 
         case REQUEST_TERMINATE: {
@@ -751,10 +750,10 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             q->ret = ni_resp->ret;
 
             if (ni_resp->hostlen)
-                q->host = strndup((char*) ni_resp + sizeof(nameinfo_response_t), ni_resp->hostlen-1);
+                q->host = strndup((const char*) ni_resp + sizeof(nameinfo_response_t), ni_resp->hostlen-1);
 
             if (ni_resp->servlen)
-                q->serv = strndup((char*) ni_resp + sizeof(nameinfo_response_t) + ni_resp->hostlen, ni_resp->servlen-1);
+                q->serv = strndup((const char*) ni_resp + sizeof(nameinfo_response_t) + ni_resp->hostlen, ni_resp->servlen-1);
                     
 
             complete_query(asyncns, q);
@@ -762,20 +761,20 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
         }
 
         case RESPONSE_RES: {
-          const res_response_t *res_resp = (res_response_t *)resp;
+            const res_response_t *res_resp = (res_response_t *)resp;
 
-          assert(length >= sizeof(res_response_t));
-          assert(q->type == REQUEST_RES_QUERY || q->type == REQUEST_RES_SEARCH);
+            assert(length >= sizeof(res_response_t));
+            assert(q->type == REQUEST_RES_QUERY || q->type == REQUEST_RES_SEARCH);
 
-          q->ret = res_resp->ret;
+            q->ret = res_resp->ret;
 
-          if (res_resp->ret >= 0)  {
-            q->serv = malloc(res_resp->ret);
-            memcpy(q->serv, (char *)resp + sizeof(res_response_t), res_resp->ret);
-          }
+            if (res_resp->ret >= 0)  {
+                q->serv = malloc(res_resp->ret);
+                memcpy(q->serv, (char *)resp + sizeof(res_response_t), res_resp->ret);
+            }
 
-          complete_query(asyncns, q);
-          break;
+            complete_query(asyncns, q);
+            break;
         }
             
         default:
@@ -1029,11 +1028,11 @@ fail:
 }
 
 asyncns_query_t* asyncns_res_query(asyncns_t *asyncns, const char *dname, int class, int type) { 
-  return asyncns_res(asyncns, REQUEST_RES_QUERY, dname, class, type);
+    return asyncns_res(asyncns, REQUEST_RES_QUERY, dname, class, type);
 }
 
 asyncns_query_t* asyncns_res_search(asyncns_t *asyncns, const char *dname, int class, int type) { 
-  return asyncns_res(asyncns, REQUEST_RES_SEARCH, dname, class, type);
+    return asyncns_res(asyncns, REQUEST_RES_SEARCH, dname, class, type);
 }
 
 int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char **answer) {
