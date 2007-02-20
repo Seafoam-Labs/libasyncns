@@ -96,8 +96,16 @@ AC_CHECK_LIB(socket, connect)
 
 AC_CHECK_FUNC(res_query, , 
   [AC_CHECK_LIB(resolv, res_query, [], 
-    [ AC_CHECK_LIB(bind, res_query, 
-                   [], [ AC_MSG_ERROR(res_query not found) ] ) ] )
+    [ save_libs="$LIBS"
+      LIBS="-lresolv $LIBS"
+      AC_MSG_CHECKING([for res_query in -lresolv (alternate version)])
+      AC_LINK_IFELSE(
+        [AC_LANG_PROGRAM([[#include <resolv.h>]], [[res_query(0,0,0,0,0)]])], 
+        [ AC_MSG_RESULT(yes) ],  
+        [ AC_MSG_RESULT(no)
+          LIBS="$save_libs"
+          AC_CHECK_LIB(bind, res_query, 
+            [], [ AC_MSG_ERROR(res_query not found) ] ) ] ) ] )
   ]
 )
 
