@@ -73,7 +73,7 @@ fi
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h stdlib.h string.h sys/socket.h unistd.h sys/prctl.h netinet/in.h])
-AC_HEADER_RESOLV
+#AC_HEADER_RESOLV
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -82,7 +82,7 @@ AC_TYPE_SIZE_T
 #AC_TYPE_SSIZE_T
 #AC_TYPE_UINT16_T
 #AC_TYPE_UINT8_T
-AC_HEADER_TIME
+iAC_HEADER_TIME
 
 # Checks for library functions.
 AC_FUNC_FORK
