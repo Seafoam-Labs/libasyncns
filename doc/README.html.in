@@ -42,6 +42,11 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.</p>
 
 <h2><a name="news">News</a></h2>
 
+<div class="news-date">Tue 20 Feb 2007: </div> <p class="news-text"><a
+href="@PACKAGE_URL@libasyncns-0.3.tar.gz">Version 0.3</a> released;
+changes include: build fixes: properly detect <tt>res_query()</tt> on
+Linux/AMD64, support older autoconf versions</p>
+
 <div class="news-date">Fri 16 Feb 2007: </div> <p class="news-text"><a
 href="@PACKAGE_URL@libasyncns-0.2.tar.gz">Version 0.2</a> released;
 changes include: <tt>res_query()</tt> support; minor bug fixes; doc updates</p>
