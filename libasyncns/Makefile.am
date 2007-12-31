@@ -25,7 +25,7 @@ libasyncns_la_SOURCES=asyncns.c asyncns.h
 libasyncns_la_LDFLAGS=-version-info $(LIBASYNCNS_VERSION_INFO)
 libasyncns_la_LIBADD=$(PTHREAD_LIBS)
 
-noinst_PROGRAMS=asyncns-test
+check_PROGRAMS=asyncns-test
 asyncns_test_CC=$(PTHREAD_CC)
 asyncns_test_SOURCES=asyncns-test.c
 asyncns_test_LDADD=libasyncns.la $(PTHREAD_LIBS)
