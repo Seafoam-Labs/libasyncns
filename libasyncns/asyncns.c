@@ -207,7 +207,7 @@ static int fd_cloexec(int fd) {
 
 
 static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *length, size_t maxlength) {
-    addrinfo_serialization_t *s = p;
+    addrinfo_serialization_t s;
     size_t cnl, l;
     assert(p);
     assert(ai);
@@ -220,13 +220,14 @@ static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *leng
     if (*length + l > maxlength)
         return NULL;
 
-    s->ai_flags = ai->ai_flags;
-    s->ai_family = ai->ai_family;
-    s->ai_socktype = ai->ai_socktype;
-    s->ai_protocol = ai->ai_protocol;
-    s->ai_addrlen = ai->ai_addrlen;
-    s->canonname_len = cnl;
+    s.ai_flags = ai->ai_flags;
+    s.ai_family = ai->ai_family;
+    s.ai_socktype = ai->ai_socktype;
+    s.ai_protocol = ai->ai_protocol;
+    s.ai_addrlen = ai->ai_addrlen;
+    s.canonname_len = cnl;
 
+    memcpy((uint8_t*) p, &s, sizeof(addrinfo_serialization_t));
     memcpy((uint8_t*) p + sizeof(addrinfo_serialization_t), ai->ai_addr, ai->ai_addrlen);
 
     if (ai->ai_canonname)
@@ -237,8 +238,8 @@ static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *leng
 }
 
 static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo *ai) {
-    uint8_t data[BUFSIZE];
-    addrinfo_response_t *resp = (addrinfo_response_t*) data;
+    addrinfo_response_t data[BUFSIZE/sizeof(addrinfo_response_t) + 1];
+    addrinfo_response_t *resp = data;
     assert(out_fd >= 0);
 
     resp->header.type = RESPONSE_ADDRINFO;
@@ -247,7 +248,7 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
     resp->ret = ret;
 
     if (ret == 0 && ai) {
-        void *p = data + sizeof(addrinfo_response_t);
+        void *p = data + 1;
 
         while (ai && p) {
             p = serialize_addrinfo(p, ai, &resp->header.length, BUFSIZE);
@@ -262,9 +263,9 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
 }
 
 static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *host, const char *serv) {
-    uint8_t data[BUFSIZE];
+    nameinfo_response_t data[BUFSIZE/sizeof(nameinfo_response_t) + 1];
     size_t hl, sl;
-    nameinfo_response_t *resp = (nameinfo_response_t*) data;
+    nameinfo_response_t *resp = data;
 
     assert(out_fd >= 0);
     
@@ -281,17 +282,17 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     assert(sizeof(data) >= resp->header.length);
     
     if (host)
-        memcpy(data + sizeof(nameinfo_response_t), host, hl);
+        memcpy((uint8_t *)data + sizeof(nameinfo_response_t), host, hl);
 
     if (serv)
-        memcpy(data + sizeof(nameinfo_response_t) + hl, serv, sl);
+        memcpy((uint8_t *)data + sizeof(nameinfo_response_t) + hl, serv, sl);
     
     return send(out_fd, resp, resp->header.length, 0);
 }
 
 static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, int ret) {
-    uint8_t data[BUFSIZE];
-    res_response_t *resp = (res_response_t *) data;
+    res_response_t data[BUFSIZE/sizeof(res_response_t) + 1];
+    res_response_t *resp = data;
 
     assert(out_fd >= 0);
     
@@ -303,7 +304,7 @@ static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, 
     assert(sizeof(data) >= resp->header.length);
     
     if (ret > 0)
-        memcpy(data + sizeof(res_response_t), answer, ret);
+        memcpy((uint8_t *)data + sizeof(res_response_t), answer, ret);
 
     return send(out_fd, resp, resp->header.length, 0);
 }
@@ -345,17 +346,18 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             int ret;
             const nameinfo_request_t *ni_req = (const nameinfo_request_t*) req;
             char hostbuf[NI_MAXHOST], servbuf[NI_MAXSERV];
-            const struct sockaddr *sa;
+            struct sockaddr_storage sa;
             
             assert(length >= sizeof(nameinfo_request_t));
             assert(length == sizeof(nameinfo_request_t) + ni_req->sockaddr_len);
 
-            sa = (const struct sockaddr*) ((const char*) req + sizeof(nameinfo_request_t));
+            memcpy (&sa, (const uint8_t *)req + sizeof(nameinfo_request_t), ni_req->sockaddr_len);
             
-            ret = getnameinfo(sa, ni_req->sockaddr_len,
+            ret = getnameinfo((struct sockaddr *)&sa, ni_req->sockaddr_len,
                               ni_req->gethost ? hostbuf : NULL, ni_req->gethost ? sizeof(hostbuf) : 0,
                               ni_req->getserv ? servbuf : NULL, ni_req->getserv ? sizeof(servbuf) : 0,
                               ni_req->flags);
+            printf ("%s %s\n", hostbuf, servbuf);
 
             return send_nameinfo_reply(out_fd, req->id, ret,
                                        ret == 0 && ni_req->gethost ? hostbuf : NULL,
@@ -365,7 +367,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
         case REQUEST_RES_QUERY: 
         case REQUEST_RES_SEARCH: {
             int ret;
-            unsigned char answer[BUFSIZE];
+            HEADER answer[BUFSIZE/sizeof(HEADER) + 1];
             const res_request_t *res_req = (const res_request_t *)req;
             const char *dname;
 
@@ -376,12 +378,12 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
             if (req->type == REQUEST_RES_QUERY) { 
                 ret = res_query(dname, res_req->class, res_req->type, 
-                                answer, BUFSIZE);
+                                (unsigned char *) answer, BUFSIZE);
             } else {
                 ret = res_search(dname, res_req->class, res_req->type, 
-                                 answer, BUFSIZE);
+                                 (unsigned char *)answer, BUFSIZE);
             }
-            return send_res_reply(out_fd, req->id, answer, ret);
+            return send_res_reply(out_fd, req->id, (unsigned char *)answer, ret);
         }
 
         case REQUEST_TERMINATE: {
@@ -445,7 +447,7 @@ static int process_worker(int in_fd, int out_fd) {
         fd_nonblock(in_fd);
     
     while (getppid() > 1) { /* if the parent PID is 1 our parent process died. */
-        char buf[BUFSIZE];
+        rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t length;
 
         if (!have_death_sig) {
@@ -470,7 +472,7 @@ static int process_worker(int in_fd, int out_fd) {
             break;
         }
 
-        if (handle_request(out_fd, (rheader_t*) buf, (size_t) length) < 0)
+        if (handle_request(out_fd, buf, (size_t) length) < 0)
             break;
     }
 
@@ -492,13 +494,13 @@ static void* thread_worker(void *p) {
     pthread_sigmask(SIG_BLOCK, &fullset, NULL);
     
     for (;;) {
-        char buf[BUFSIZE];
+        rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t length;
 
         if ((length = recv(fds[REQUEST_RECV_FD], buf, sizeof(buf), 0)) <= 0)
             break;
 
-        if (handle_request(fds[RESPONSE_SEND_FD], (rheader_t*) buf, (size_t) length) < 0)
+        if (handle_request(fds[RESPONSE_SEND_FD], buf, (size_t) length) < 0)
             break;
         
     }
@@ -789,7 +791,7 @@ int asyncns_wait(asyncns_t *asyncns, int block) {
     assert(asyncns);
 
     for (;;) {
-        char buf[BUFSIZE];
+        rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t l;
 
         if (((l = recv(asyncns->fds[RESPONSE_RECV_FD], buf, sizeof(buf), 0)) < 0)) {
@@ -810,8 +812,7 @@ int asyncns_wait(asyncns_t *asyncns, int block) {
             continue;
         }
 
-
-        if (handle_response(asyncns, (rheader_t*) buf, (size_t) l) < 0)
+        if (handle_response(asyncns, buf, (size_t) l) < 0)
             return -1;
 
         handled = 1;
@@ -852,8 +853,8 @@ static asyncns_query_t *alloc_query(asyncns_t *asyncns) {
 }
 
 asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const char *service, const struct addrinfo *hints) {
-    uint8_t data[BUFSIZE];
-    addrinfo_request_t *req = (addrinfo_request_t*) data;
+    addrinfo_request_t data[BUFSIZE/sizeof(addrinfo_request_t) + 1];
+    addrinfo_request_t *req = data;
     asyncns_query_t *q;
     assert(asyncns);
     assert(node || service);
@@ -917,8 +918,8 @@ int asyncns_getaddrinfo_done(asyncns_t *asyncns, asyncns_query_t* q, struct addr
 }
 
 asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *sa, socklen_t salen, int flags, int gethost, int getserv) {
-    uint8_t data[BUFSIZE];
-    nameinfo_request_t *req = (nameinfo_request_t*) data;
+    nameinfo_request_t data[BUFSIZE/sizeof(nameinfo_request_t) + 1];
+    nameinfo_request_t *req = data;
     asyncns_query_t *q;
 
     assert(asyncns);
@@ -987,8 +988,8 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
 static asyncns_query_t *
 asyncns_res(asyncns_t *asyncns, query_type_t qtype, 
             const char *dname, int class, int type) {
-    uint8_t data[BUFSIZE];
-    res_request_t *req = (res_request_t*) data;
+    res_request_t data[BUFSIZE/sizeof(res_request_t) + 1];
+    res_request_t *req = data;
     asyncns_query_t *q;
     size_t dlen;
 
