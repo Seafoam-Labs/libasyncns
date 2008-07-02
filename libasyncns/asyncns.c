@@ -2,17 +2,17 @@
 
 /***
   This file is part of libasyncns.
- 
+
   libasyncns is free software; you can redistribute it and/or modify
   it under the terms of the GNU Lesser General Public License as
   published by the Free Software Foundation; either version 2 of the
   License, or (at your option) any later version.
- 
+
   libasyncns is distributed in the hope that it will be useful, but
   WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
   General Public License for more details.
- 
+
   You should have received a copy of the GNU Lesser General Public
   License along with libasyncns; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
@@ -76,7 +76,7 @@ enum {
 struct asyncns {
     int fds[4];
 
-#ifndef HAVE_PTHREAD    
+#ifndef HAVE_PTHREAD
     pid_t workers[MAX_WORKERS];
 #else
     pthread_t workers[MAX_WORKERS];
@@ -201,7 +201,7 @@ static int fd_cloexec(int fd) {
 
     if (v & FD_CLOEXEC)
         return 0;
-    
+
     return fcntl(fd, F_SETFD, v | FD_CLOEXEC);
 }
 
@@ -268,7 +268,7 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     nameinfo_response_t *resp = data;
 
     assert(out_fd >= 0);
-    
+
     sl = serv ? strlen(serv)+1 : 0;
     hl = host ? strlen(host)+1 : 0;
 
@@ -280,13 +280,13 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     resp->servlen = sl;
 
     assert(sizeof(data) >= resp->header.length);
-    
+
     if (host)
         memcpy((uint8_t *)data + sizeof(nameinfo_response_t), host, hl);
 
     if (serv)
         memcpy((uint8_t *)data + sizeof(nameinfo_response_t) + hl, serv, sl);
-    
+
     return send(out_fd, resp, resp->header.length, 0);
 }
 
@@ -295,14 +295,14 @@ static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, 
     res_response_t *resp = data;
 
     assert(out_fd >= 0);
-    
+
     resp->header.type = RESPONSE_RES;
     resp->header.id = id;
     resp->header.length = sizeof(res_response_t) + (ret < 0 ? 0 : ret);
     resp->ret = (ret < 0) ? -errno : ret;
 
     assert(sizeof(data) >= resp->header.length);
-    
+
     if (ret > 0)
         memcpy((uint8_t *)data + sizeof(res_response_t), answer, ret);
 
@@ -347,12 +347,12 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             const nameinfo_request_t *ni_req = (const nameinfo_request_t*) req;
             char hostbuf[NI_MAXHOST], servbuf[NI_MAXSERV];
             struct sockaddr_storage sa;
-            
+
             assert(length >= sizeof(nameinfo_request_t));
             assert(length == sizeof(nameinfo_request_t) + ni_req->sockaddr_len);
 
             memcpy (&sa, (const uint8_t *)req + sizeof(nameinfo_request_t), ni_req->sockaddr_len);
-            
+
             ret = getnameinfo((struct sockaddr *)&sa, ni_req->sockaddr_len,
                               ni_req->gethost ? hostbuf : NULL, ni_req->gethost ? sizeof(hostbuf) : 0,
                               ni_req->getserv ? servbuf : NULL, ni_req->getserv ? sizeof(servbuf) : 0,
@@ -364,7 +364,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
                                        ret == 0 && ni_req->getserv ? servbuf : NULL);
         }
 
-        case REQUEST_RES_QUERY: 
+        case REQUEST_RES_QUERY:
         case REQUEST_RES_SEARCH: {
             int ret;
             HEADER answer[BUFSIZE/sizeof(HEADER) + 1];
@@ -376,11 +376,11 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
             dname = (const char *) req + sizeof(res_request_t);
 
-            if (req->type == REQUEST_RES_QUERY) { 
-                ret = res_query(dname, res_req->class, res_req->type, 
+            if (req->type == REQUEST_RES_QUERY) {
+                ret = res_query(dname, res_req->class, res_req->type,
                                 (unsigned char *) answer, BUFSIZE);
             } else {
-                ret = res_search(dname, res_req->class, res_req->type, 
+                ret = res_search(dname, res_req->class, res_req->type,
                                  (unsigned char *)answer, BUFSIZE);
             }
             return send_res_reply(out_fd, req->id, (unsigned char *)answer, ret);
@@ -404,7 +404,7 @@ static int process_worker(int in_fd, int out_fd) {
     int have_death_sig = 0;
     assert(in_fd > 2);
     assert(out_fd > 2);
-    
+
     close(0);
     close(1);
     close(2);
@@ -419,7 +419,7 @@ static int process_worker(int in_fd, int out_fd) {
         struct passwd *pw;
 
         if ((pw = getpwnam("nobody"))) {
-#ifdef HAVE_SETRESUID            
+#ifdef HAVE_SETRESUID
             setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid);
 #elif HAVE_SETREUID
             setreuid(pw->pw_uid, pw->pw_uid);
@@ -445,7 +445,7 @@ static int process_worker(int in_fd, int out_fd) {
 
     if (!have_death_sig)
         fd_nonblock(in_fd);
-    
+
     while (getppid() > 1) { /* if the parent PID is 1 our parent process died. */
         rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t length;
@@ -453,17 +453,17 @@ static int process_worker(int in_fd, int out_fd) {
         if (!have_death_sig) {
             fd_set fds;
             struct timeval tv = { 0, 500000 } ;
-            
+
             FD_ZERO(&fds);
             FD_SET(in_fd, &fds);
-            
+
             if (select(in_fd+1, &fds, NULL, NULL, &tv) < 0)
                 break;
-            
+
             if (getppid() == 1)
                 break;
         }
-        
+
         if ((length = recv(in_fd, buf, sizeof(buf), 0)) <= 0) {
 
             if (length < 0 && errno == EAGAIN)
@@ -478,7 +478,7 @@ static int process_worker(int in_fd, int out_fd) {
 
     close(in_fd);
     close(out_fd);
-    
+
     return 0;
 }
 
@@ -492,7 +492,7 @@ static void* thread_worker(void *p) {
     /* No signals in this thread please */
     sigfillset(&fullset);
     pthread_sigmask(SIG_BLOCK, &fullset, NULL);
-    
+
     for (;;) {
         rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t length;
@@ -502,7 +502,7 @@ static void* thread_worker(void *p) {
 
         if (handle_request(fds[RESPONSE_SEND_FD], buf, (size_t) length) < 0)
             break;
-        
+
     }
 
     return NULL;
@@ -524,17 +524,17 @@ asyncns_t* asyncns_new(unsigned n_proc) {
 
     asyncns->valid_workers = 0;
 
-    for (i = 0; i < 4; i++) 
+    for (i = 0; i < 4; i++)
         asyncns->fds[i] = -1;
-        
+
     for (p = 0; p < MAX_QUERIES; p++)
         asyncns->queries[p] = NULL;
-    
+
     if (socketpair(PF_UNIX, SOCK_DGRAM, 0, asyncns->fds) < 0 ||
         socketpair(PF_UNIX, SOCK_DGRAM, 0, asyncns->fds+2) < 0)
         goto fail;
-    
-    for (i = 0; i < 4; i++) 
+
+    for (i = 0; i < 4; i++)
         fd_cloexec(asyncns->fds[i]);
 
     for (asyncns->valid_workers = 0; asyncns->valid_workers < n_proc; asyncns->valid_workers++) {
@@ -557,8 +557,8 @@ asyncns_t* asyncns_new(unsigned n_proc) {
     close(asyncns->fds[REQUEST_RECV_FD]);
     close(asyncns->fds[RESPONSE_SEND_FD]);
     asyncns->fds[REQUEST_RECV_FD] = asyncns->fds[RESPONSE_SEND_FD] = -1;
-#endif    
-    
+#endif
+
     asyncns->current_index = asyncns->current_id = 0;
     asyncns->done_head = asyncns->done_tail = NULL;
     asyncns->n_queries = 0;
@@ -568,7 +568,7 @@ asyncns_t* asyncns_new(unsigned n_proc) {
     return asyncns;
 
 fail:
-    if (asyncns) 
+    if (asyncns)
         asyncns_free(asyncns);
 
     return NULL;
@@ -583,7 +583,7 @@ void asyncns_free(asyncns_t *asyncns) {
     req.type = REQUEST_TERMINATE;
     req.length = sizeof(req);
     req.id = 0;
-    
+
     /* Send one termiantion packet for each worker */
     for (p = 0; p < asyncns->valid_workers; p++)
         send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, 0);
@@ -596,21 +596,21 @@ void asyncns_free(asyncns_t *asyncns) {
 #else
         pthread_cancel(asyncns->workers[p]);
         pthread_join(asyncns->workers[p], NULL);
-#endif        
+#endif
     }
 
     /* Due to Solaris' broken thread cancelation we first send an
      * termination request and then cancel th thread. */
 
-    
+
     for (i = 0; i < 4; i++)
         if (asyncns->fds[i] >= 0)
             close(asyncns->fds[i]);
-    
+
     for (p = 0; p < MAX_QUERIES; p++)
         if (asyncns->queries[p])
             asyncns_cancel(asyncns, asyncns->queries[p]);
-    
+
     free(asyncns);
 }
 
@@ -637,7 +637,7 @@ static void complete_query(asyncns_t *asyncns, asyncns_query_t *q) {
     assert(!q->done);
 
     q->done = 1;
-    
+
     if ((q->done_prev = asyncns->done_tail))
         asyncns->done_tail->done_next = q;
     else
@@ -664,14 +664,14 @@ static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *len
 
     if (!(ai = malloc(sizeof(struct addrinfo))))
         goto fail;
-    
+
     ai->ai_addr = NULL;
     ai->ai_canonname = NULL;
     ai->ai_next = NULL;
 
     if (s->ai_addrlen && !(ai->ai_addr = malloc(s->ai_addrlen)))
         goto fail;
-    
+
     if (s->canonname_len && !(ai->ai_canonname = malloc(s->canonname_len)))
         goto fail;
 
@@ -689,7 +689,7 @@ static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *len
 
     *length -= l;
     *ret_ai = ai;
-    
+
     return (uint8_t*) p + l;
 
 
@@ -709,7 +709,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
 
     if (!(q = lookup_query(asyncns, resp->id)))
         return 0;
-    
+
     switch (resp->type) {
         case RESPONSE_ADDRINFO: {
             const addrinfo_response_t *ai_resp = (addrinfo_response_t*) resp;
@@ -756,7 +756,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
 
             if (ni_resp->servlen)
                 q->serv = strndup((const char*) ni_resp + sizeof(nameinfo_response_t) + ni_resp->hostlen, ni_resp->servlen-1);
-                    
+
 
             complete_query(asyncns, q);
             break;
@@ -778,11 +778,11 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             complete_query(asyncns, q);
             break;
         }
-            
+
         default:
             ;
     }
-    
+
     return 0;
 }
 
@@ -802,13 +802,13 @@ int asyncns_wait(asyncns_t *asyncns, int block) {
 
             if (!block || handled)
                 return 0;
-                
+
             FD_ZERO(&fds);
             FD_SET(asyncns->fds[RESPONSE_RECV_FD], &fds);
 
             if (select(asyncns->fds[RESPONSE_RECV_FD]+1, &fds, NULL, NULL, NULL) < 0)
                 return -1;
-                
+
             continue;
         }
 
@@ -834,7 +834,7 @@ static asyncns_query_t *alloc_query(asyncns_t *asyncns) {
         while (asyncns->current_index >= MAX_QUERIES)
             asyncns->current_index -= MAX_QUERIES;
     }
-        
+
     if (!(q = asyncns->queries[asyncns->current_index] = malloc(sizeof(asyncns_query_t))))
         return NULL;
 
@@ -863,10 +863,10 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
         return NULL;
 
     memset(req, 0, sizeof(addrinfo_request_t));
-    
+
     req->node_len = node ? strlen(node)+1 : 0;
     req->service_len = service ? strlen(service)+1 : 0;
-    
+
     req->header.id = q->id;
     req->header.type = q->type = REQUEST_ADDRINFO;
     req->header.length = sizeof(addrinfo_request_t) + req->node_len + req->service_len;
@@ -875,7 +875,7 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
         goto fail;
 
     if (!(req->hints_is_null = !hints)) {
-        req->ai_flags = hints->ai_flags; 
+        req->ai_flags = hints->ai_flags;
         req->ai_family = hints->ai_family;
         req->ai_socktype = hints->ai_socktype;
         req->ai_protocol = hints->ai_protocol;
@@ -889,7 +889,7 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
 
     if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
         goto fail;
-    
+
     return q;
 
 fail:
@@ -930,7 +930,7 @@ asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *
         return NULL;
 
     memset(req, 0, sizeof(nameinfo_request_t));
-    
+
     req->header.id = q->id;
     req->header.type = q->type = REQUEST_NAMEINFO;
     req->header.length = sizeof(nameinfo_request_t) + salen;
@@ -947,7 +947,7 @@ asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *
 
     if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
         goto fail;
-    
+
     return q;
 
 fail:
@@ -978,7 +978,7 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
         strncpy(ret_serv, q->serv, servlen);
         ret_serv[servlen-1] = 0;
     }
-    
+
     ret = q->ret;
     asyncns_cancel(asyncns, q);
 
@@ -986,7 +986,7 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
 }
 
 static asyncns_query_t *
-asyncns_res(asyncns_t *asyncns, query_type_t qtype, 
+asyncns_res(asyncns_t *asyncns, query_type_t qtype,
             const char *dname, int class, int type) {
     res_request_t data[BUFSIZE/sizeof(res_request_t) + 1];
     res_request_t *req = data;
@@ -1002,7 +1002,7 @@ asyncns_res(asyncns_t *asyncns, query_type_t qtype,
         return NULL;
 
     memset(req, 0, sizeof(res_request_t));
-    
+
     req->header.id = q->id;
     req->header.type = q->type = qtype;
     req->header.length = sizeof(res_request_t) + dlen;
@@ -1018,7 +1018,7 @@ asyncns_res(asyncns_t *asyncns, query_type_t qtype,
 
     if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
         goto fail;
-    
+
     return q;
 
 fail:
@@ -1028,11 +1028,11 @@ fail:
     return NULL;
 }
 
-asyncns_query_t* asyncns_res_query(asyncns_t *asyncns, const char *dname, int class, int type) { 
+asyncns_query_t* asyncns_res_query(asyncns_t *asyncns, const char *dname, int class, int type) {
     return asyncns_res(asyncns, REQUEST_RES_QUERY, dname, class, type);
 }
 
-asyncns_query_t* asyncns_res_search(asyncns_t *asyncns, const char *dname, int class, int type) { 
+asyncns_query_t* asyncns_res_search(asyncns_t *asyncns, const char *dname, int class, int type) {
     return asyncns_res(asyncns, REQUEST_RES_SEARCH, dname, class, type);
 }
 
@@ -1078,7 +1078,7 @@ void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q) {
 
         if (q->done_prev)
             q->done_prev->done_next = q->done_next;
-        else 
+        else
             asyncns->done_head = q->done_next;
 
         if (q->done_next)
@@ -1128,7 +1128,7 @@ void asyncns_setuserdata(asyncns_t *asyncns, asyncns_query_t *q, void *userdata)
     assert(q);
     assert(asyncns);
     assert(q->asyncns = asyncns);
-    
+
     q->userdata = userdata;
 }
 
@@ -1139,5 +1139,3 @@ void* asyncns_getuserdata(asyncns_t *asyncns, asyncns_query_t *q) {
 
     return q->userdata;
 }
-
-
