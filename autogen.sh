@@ -49,6 +49,7 @@ else
     rm -rf autom4te.cache
     rm -f config.cache
 
+    mkdir -p common
     test "x$LIBTOOLIZE" = "x" && LIBTOOLIZE=libtoolize
 
     run_versioned "$LIBTOOLIZE" 1.5 -c --force
