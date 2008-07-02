@@ -1093,7 +1093,6 @@ void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q) {
     asyncns->queries[i] = NULL;
 
     asyncns_freeaddrinfo(q->addrinfo);
-    free(q->addrinfo);
     free(q->host);
     free(q->serv);
 
