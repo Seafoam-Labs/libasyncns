@@ -121,8 +121,7 @@ asyncns_query_t* asyncns_res_search(asyncns_t *asyncns, const char *dname, int c
  * may not be used any further. Returns a pointer to the answer of the
  * res_query call. If the query is not completed yet -EAGAIN is returned, on
  * failure -errno is returned otherwise the length of answer is returned. */
-int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char
-**answer);
+int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char **answer);
 
 /** Return the next completed query object. If no query has been
  * completed yet, return NULL. Please note that you need to run

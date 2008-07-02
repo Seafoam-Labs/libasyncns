@@ -351,13 +351,13 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             assert(length >= sizeof(nameinfo_request_t));
             assert(length == sizeof(nameinfo_request_t) + ni_req->sockaddr_len);
 
-            memcpy (&sa, (const uint8_t *)req + sizeof(nameinfo_request_t), ni_req->sockaddr_len);
+            memcpy(&sa, (const uint8_t *)req + sizeof(nameinfo_request_t), ni_req->sockaddr_len);
 
             ret = getnameinfo((struct sockaddr *)&sa, ni_req->sockaddr_len,
                               ni_req->gethost ? hostbuf : NULL, ni_req->gethost ? sizeof(hostbuf) : 0,
                               ni_req->getserv ? servbuf : NULL, ni_req->getserv ? sizeof(servbuf) : 0,
                               ni_req->flags);
-            printf ("%s %s\n", hostbuf, servbuf);
+            printf("%s %s\n", hostbuf, servbuf);
 
             return send_nameinfo_reply(out_fd, req->id, ret,
                                        ret == 0 && ni_req->gethost ? hostbuf : NULL,
@@ -599,9 +599,8 @@ void asyncns_free(asyncns_t *asyncns) {
 #endif
     }
 
-    /* Due to Solaris' broken thread cancelation we first send an
-     * termination request and then cancel th thread. */
-
+    /* Due to Solaris' broken thread cancelation we first send a
+     * termination request and then cancel the thread. */
 
     for (i = 0; i < 4; i++)
         if (asyncns->fds[i] >= 0)
@@ -985,9 +984,7 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
     return ret;
 }
 
-static asyncns_query_t *
-asyncns_res(asyncns_t *asyncns, query_type_t qtype,
-            const char *dname, int class, int type) {
+static asyncns_query_t * asyncns_res(asyncns_t *asyncns, query_type_t qtype, const char *dname, int class, int type) {
     res_request_t data[BUFSIZE/sizeof(res_request_t) + 1];
     res_request_t *req = data;
     asyncns_query_t *q;
