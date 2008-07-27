@@ -27,7 +27,7 @@ AM_INIT_AUTOMAKE([foreign 1.9 -Wall])
 
 AC_SUBST(PACKAGE_URL, [http://0pointer.de/lennart/projects/libasyncns/])
 
-AC_SUBST(LIBASYNCNS_VERSION_INFO, [1:0:1])
+AC_SUBST(LIBASYNCNS_VERSION_INFO, [2:0:2])
 
 if type -p stow > /dev/null && test -d /usr/local/stow ; then
    AC_MSG_NOTICE([*** Found /usr/local/stow: default install prefix set to /usr/local/stow/${PACKAGE_NAME}-${PACKAGE_VERSION} ***])
