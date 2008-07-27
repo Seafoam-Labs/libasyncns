@@ -568,10 +568,9 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             return send_res_reply(out_fd, req->id, (unsigned char *) answer, ret, errno);
         }
 
-        case REQUEST_TERMINATE: {
+        case REQUEST_TERMINATE:
             /* Quit */
             return -1;
-        }
 
         default:
             ;
@@ -585,6 +584,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 static int process_worker(int in_fd, int out_fd) {
     int have_death_sig = 0;
     int good_fds[3];
+    int ret = 1;
 
     const int ignore_sigs[] = {
         SIGINT,
@@ -656,7 +656,7 @@ static int process_worker(int in_fd, int out_fd) {
 
         if (!have_death_sig) {
             fd_set fds;
-            struct timeval tv = { 0, 500000 } ;
+            struct timeval tv = { 0, 500000 };
 
             FD_ZERO(&fds);
             FD_SET(in_fd, &fds);
@@ -680,11 +680,13 @@ static int process_worker(int in_fd, int out_fd) {
             break;
     }
 
+    ret = 0;
+
 fail:
 
     send_died(out_fd);
 
-    return 0;
+    return ret;
 }
 
 #else
