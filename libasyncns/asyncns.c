@@ -395,6 +395,7 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
     addrinfo_response_t *resp = data;
     assert(out_fd >= 0);
 
+    memset(data, 0, sizeof(data));
     resp->header.type = RESPONSE_ADDRINFO;
     resp->header.id = id;
     resp->header.length = sizeof(addrinfo_response_t);
@@ -425,6 +426,7 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     sl = serv ? strlen(serv)+1 : 0;
     hl = host ? strlen(host)+1 : 0;
 
+    memset(data, 0, sizeof(data));
     resp->header.type = RESPONSE_NAMEINFO;
     resp->header.id = id;
     resp->header.length = sizeof(nameinfo_response_t) + hl + sl;
@@ -449,6 +451,7 @@ static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, 
 
     assert(out_fd >= 0);
 
+    memset(data, 0, sizeof(data));
     resp->header.type = RESPONSE_RES;
     resp->header.id = id;
     resp->header.length = sizeof(res_response_t) + (ret < 0 ? 0 : ret);
@@ -757,6 +760,7 @@ void asyncns_free(asyncns_t *asyncns) {
     rheader_t req;
     assert(asyncns);
 
+    memset(&req, 0, sizeof(req));
     req.type = REQUEST_TERMINATE;
     req.length = sizeof(req);
     req.id = 0;
