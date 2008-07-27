@@ -530,14 +530,12 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
             dname = (const char *) req + sizeof(res_request_t);
 
-            if (req->type == REQUEST_RES_QUERY) {
-                ret = res_query(dname, res_req->class, res_req->type,
-                                (unsigned char *) answer, BUFSIZE);
-            } else {
-                ret = res_search(dname, res_req->class, res_req->type,
-                                 (unsigned char *)answer, BUFSIZE);
-            }
-            return send_res_reply(out_fd, req->id, (unsigned char *)answer, ret);
+            if (req->type == REQUEST_RES_QUERY)
+                ret = res_query(dname, res_req->class, res_req->type, (unsigned char *) answer, BUFSIZE);
+            else
+                ret = res_search(dname, res_req->class, res_req->type, (unsigned char *) answer, BUFSIZE);
+
+            return send_res_reply(out_fd, req->id, (unsigned char *) answer, ret);
         }
 
         case REQUEST_TERMINATE: {
