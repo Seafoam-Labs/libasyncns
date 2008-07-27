@@ -154,7 +154,7 @@ typedef struct res_query_request {
     struct rheader header;
     int class;
     int type;
-    size_t dlen;
+    size_t dname_len;
 } res_request_t;
 
 typedef struct res_query_response {
@@ -528,7 +528,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             const char *dname;
 
             assert(length >= sizeof(res_request_t));
-            assert(length == sizeof(res_request_t) + res_req->dlen);
+            assert(length == sizeof(res_request_t) + res_req->dname_len);
 
             dname = (const char *) req + sizeof(res_request_t);
 
@@ -1166,30 +1166,28 @@ static asyncns_query_t * asyncns_res(asyncns_t *asyncns, query_type_t qtype, con
     res_request_t data[BUFSIZE/sizeof(res_request_t) + 1];
     res_request_t *req = data;
     asyncns_query_t *q;
-    size_t dlen;
 
     assert(asyncns);
     assert(dname);
-
-    dlen = strlen(dname);
 
     if (!(q = alloc_query(asyncns)))
         return NULL;
 
     memset(req, 0, sizeof(res_request_t));
 
+    req->dname_len = strlen(dname) + 1;
+
     req->header.id = q->id;
     req->header.type = q->type = qtype;
-    req->header.length = sizeof(res_request_t) + dlen;
+    req->header.length = sizeof(res_request_t) + req->dname_len;
 
     if (req->header.length > BUFSIZE)
         goto fail;
 
     req->class = class;
     req->type = type;
-    req->dlen = dlen;
 
-    memcpy((uint8_t*) req + sizeof(res_request_t), dname, dlen);
+    strcpy((char*) req + sizeof(res_request_t), dname);
 
     if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
         goto fail;
