@@ -427,8 +427,13 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
         void *p = data + 1;
         struct addrinfo *k;
 
-        for (k = ai; k && p; k = k->ai_next)
-            p = serialize_addrinfo(p, ai, &resp->header.length, (char*) data + BUFSIZE - (char*) p);
+        for (k = ai; k; k = k->ai_next) {
+
+            if (!(p = serialize_addrinfo(p, ai, &resp->header.length, (char*) data + BUFSIZE - (char*) p))) {
+                resp->ret = EAI_MEMORY;
+                break;
+            }
+        }
     }
 
     if (ai)
@@ -560,7 +565,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
             else
                 ret = res_search(dname, res_req->class, res_req->type, (unsigned char *) answer, BUFSIZE);
 
-            return send_res_reply(out_fd, req->id, (unsigned char *) answer, ret);
+            return send_res_reply(out_fd, req->id, (unsigned char *) answer, ret, errno);
         }
 
         case REQUEST_TERMINATE: {
@@ -731,8 +736,10 @@ asyncns_t* asyncns_new(unsigned n_proc) {
     if (n_proc > MAX_WORKERS)
         n_proc = MAX_WORKERS;
 
-    if (!(asyncns = malloc(sizeof(asyncns_t))))
+    if (!(asyncns = malloc(sizeof(asyncns_t)))) {
+        errno = ENOMEM;
         goto fail;
+    }
 
     asyncns->dead = 0;
     asyncns->valid_workers = 0;
@@ -950,8 +957,10 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
                 struct addrinfo *ai = NULL;
                 p = unserialize_addrinfo(p, &ai, &l);
 
-                if (!ai)
+                if (!p || !ai) {
+                    q->ret = EAI_MEMORY;
                     break;
+                }
 
                 if (prev)
                     prev->ai_next = ai;
@@ -975,11 +984,12 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             q->_errno = ni_resp->_errno;
 
             if (ni_resp->hostlen)
-                q->host = strndup((const char*) ni_resp + sizeof(nameinfo_response_t), ni_resp->hostlen-1);
+                if (!(q->host = strndup((const char*) ni_resp + sizeof(nameinfo_response_t), ni_resp->hostlen-1)))
+                    q->ret = EAI_MEMORY;
 
             if (ni_resp->servlen)
-                q->serv = strndup((const char*) ni_resp + sizeof(nameinfo_response_t) + ni_resp->hostlen, ni_resp->servlen-1);
-
+                if (!(q->serv = strndup((const char*) ni_resp + sizeof(nameinfo_response_t) + ni_resp->hostlen, ni_resp->servlen-1)))
+                    q->ret = EAI_MEMORY;
 
             complete_query(asyncns, q);
             break;
@@ -995,8 +1005,11 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             q->_errno = res_resp->_errno;
 
             if (res_resp->ret >= 0)  {
-                q->serv = malloc(res_resp->ret);
-                memcpy(q->serv, (char *)resp + sizeof(res_response_t), res_resp->ret);
+                if (!(q->serv = malloc(res_resp->ret))) {
+                    q->ret = -1;
+                    q->_errno = ENOMEM;
+                } else
+                    memcpy(q->serv, (char *)resp + sizeof(res_response_t), res_resp->ret);
             }
 
             complete_query(asyncns, q);
@@ -1052,8 +1065,10 @@ static asyncns_query_t *alloc_query(asyncns_t *asyncns) {
     asyncns_query_t *q;
     assert(asyncns);
 
-    if (asyncns->n_queries >= MAX_QUERIES)
+    if (asyncns->n_queries >= MAX_QUERIES) {
+        errno = ENOMEM;
         return NULL;
+    }
 
     while (asyncns->queries[asyncns->current_index]) {
 
@@ -1064,8 +1079,10 @@ static asyncns_query_t *alloc_query(asyncns_t *asyncns) {
             asyncns->current_index -= MAX_QUERIES;
     }
 
-    if (!(q = asyncns->queries[asyncns->current_index] = malloc(sizeof(asyncns_query_t))))
+    if (!(q = asyncns->queries[asyncns->current_index] = malloc(sizeof(asyncns_query_t)))) {
+        errno = ENOMEM;
         return NULL;
+    }
 
     asyncns->n_queries++;
 
@@ -1106,8 +1123,10 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
     req->header.type = q->type = REQUEST_ADDRINFO;
     req->header.length = sizeof(addrinfo_request_t) + req->node_len + req->service_len;
 
-    if (req->header.length > BUFSIZE)
+    if (req->header.length > BUFSIZE) {
+        errno = ENOMEM;
         goto fail;
+    }
 
     if (!(req->hints_is_null = !hints)) {
         req->ai_flags = hints->ai_flags;
@@ -1151,7 +1170,12 @@ int asyncns_getaddrinfo_done(asyncns_t *asyncns, asyncns_query_t* q, struct addr
 
     *ret_res = q->addrinfo;
     q->addrinfo = NULL;
+
     ret = q->ret;
+
+    if (ret == EAI_SYSTEM)
+        errno = q->_errno;
+
     asyncns_cancel(asyncns, q);
 
     return ret;
@@ -1180,8 +1204,10 @@ asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *
     req->header.type = q->type = REQUEST_NAMEINFO;
     req->header.length = sizeof(nameinfo_request_t) + salen;
 
-    if (req->header.length > BUFSIZE)
+    if (req->header.length > BUFSIZE) {
+        errno = ENOMEM;
         goto fail;
+    }
 
     req->flags = flags;
     req->sockaddr_len = salen;
@@ -1263,8 +1289,10 @@ static asyncns_query_t * asyncns_res(asyncns_t *asyncns, query_type_t qtype, con
     req->header.type = q->type = qtype;
     req->header.length = sizeof(res_request_t) + req->dname_len;
 
-    if (req->header.length > BUFSIZE)
+    if (req->header.length > BUFSIZE) {
+        errno = ENOMEM;
         goto fail;
+    }
 
     req->class = class;
     req->type = type;
