@@ -199,6 +199,8 @@ static int close_allv(const int except_fds[]) {
 
     DIR *d;
 
+    assert(except_fds);
+
     if ((d = opendir("/proc/self/fd"))) {
 
         struct dirent *de;
@@ -281,6 +283,7 @@ static int close_allv(const int except_fds[]) {
 
 static int reset_sigsv(const int except[]) {
     int sig;
+    assert(except);
 
     for (sig = 1; sig < _NSIG; sig++) {
         int reset = 1;
@@ -322,6 +325,7 @@ static int reset_sigsv(const int except[]) {
 
 static int ignore_sigsv(const int ignore[]) {
     int i;
+    assert(ignore);
 
     for (i = 0; ignore[i] > 0; i++) {
         struct sigaction sa;
