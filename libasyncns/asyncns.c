@@ -1399,6 +1399,8 @@ int asyncns_getnqueries(asyncns_t *asyncns) {
 
 void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q) {
     int i;
+    int saved_errno = errno;
+
     assert(asyncns);
     assert(q);
     assert(q->asyncns == asyncns);
@@ -1417,7 +1419,6 @@ void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q) {
             asyncns->done_tail = q->done_prev;
     }
 
-
     i = q->id % MAX_QUERIES;
     assert(asyncns->queries[i] == q);
     asyncns->queries[i] = NULL;
@@ -1428,11 +1429,12 @@ void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q) {
 
     asyncns->n_queries--;
     free(q);
+
+    errno = saved_errno;
 }
 
 void asyncns_freeaddrinfo(struct addrinfo *ai) {
-    if (!ai)
-        return;
+    int saved_errno = errno;
 
     while (ai) {
         struct addrinfo *next = ai->ai_next;
@@ -1443,6 +1445,19 @@ void asyncns_freeaddrinfo(struct addrinfo *ai) {
 
         ai = next;
     }
+
+    errno = saved_errno;
+}
+
+void asyncns_freeanswer(unsigned char *answer) {
+    int saved_errno = errno;
+
+    if (!answer)
+        return;
+
+    free(answer);
+
+    errno = saved_errno;
 }
 
 int asyncns_isdone(asyncns_t *asyncns, asyncns_query_t*q) {
@@ -1467,10 +1482,4 @@ void* asyncns_getuserdata(asyncns_t *asyncns, asyncns_query_t *q) {
     assert(q->asyncns = asyncns);
 
     return q->userdata;
-}
-
-void asyncns_freeanswer(unsigned char *answer) {
-    assert(answer);
-
-    free(answer);
 }
