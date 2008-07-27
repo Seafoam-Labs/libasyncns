@@ -403,11 +403,10 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
 
     if (ret == 0 && ai) {
         void *p = data + 1;
+        struct addrinfo *k;
 
-        while (ai && p) {
-            p = serialize_addrinfo(p, ai, &resp->header.length, BUFSIZE);
-            ai = ai->ai_next;
-        }
+        for (k = ai; k && p; k = k->ai_next)
+            p = serialize_addrinfo(p, ai, &resp->header.length, (char*) data + BUFSIZE - (char*) p);
     }
 
     if (ai)
