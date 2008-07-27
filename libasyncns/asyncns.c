@@ -101,6 +101,7 @@ struct asyncns_query {
     query_type_t type;
     asyncns_query_t *done_next, *done_prev;
     int ret;
+    int _errno;
     struct addrinfo *addrinfo;
     char *serv, *host;
     void *userdata;
@@ -125,6 +126,7 @@ typedef struct addrinfo_request {
 typedef struct addrinfo_response {
     struct rheader header;
     int ret;
+    int _errno;
     /* followed by addrinfo_serialization[] */
 } addrinfo_response_t;
 
@@ -149,6 +151,7 @@ typedef struct nameinfo_response {
     struct rheader header;
     size_t hostlen, servlen;
     int ret;
+    int _errno;
 } nameinfo_response_t;
 
 typedef struct res_query_request {
@@ -161,6 +164,7 @@ typedef struct res_query_request {
 typedef struct res_query_response {
     struct rheader header;
     int ret;
+    int _errno;
 } res_response_t;
 
 #ifndef HAVE_STRNDUP
@@ -403,7 +407,7 @@ static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *leng
     return (uint8_t*) p + l;
 }
 
-static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo *ai) {
+static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo *ai, int _errno) {
     addrinfo_response_t data[BUFSIZE/sizeof(addrinfo_response_t) + 1];
     addrinfo_response_t *resp = data;
     assert(out_fd >= 0);
@@ -413,6 +417,7 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
     resp->header.id = id;
     resp->header.length = sizeof(addrinfo_response_t);
     resp->ret = ret;
+    resp->_errno = _errno;
 
     if (ret == 0 && ai) {
         void *p = data + 1;
@@ -428,7 +433,7 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
     return send(out_fd, resp, resp->header.length, 0);
 }
 
-static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *host, const char *serv) {
+static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *host, const char *serv, int _errno) {
     nameinfo_response_t data[BUFSIZE/sizeof(nameinfo_response_t) + 1];
     size_t hl, sl;
     nameinfo_response_t *resp = data;
@@ -443,6 +448,7 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     resp->header.id = id;
     resp->header.length = sizeof(nameinfo_response_t) + hl + sl;
     resp->ret = ret;
+    resp->_errno = _errno;
     resp->hostlen = hl;
     resp->servlen = sl;
 
@@ -457,7 +463,7 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     return send(out_fd, resp, resp->header.length, 0);
 }
 
-static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, int ret) {
+static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, int ret, int _errno) {
     res_response_t data[BUFSIZE/sizeof(res_response_t) + 1];
     res_response_t *resp = data;
 
@@ -467,7 +473,8 @@ static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, 
     resp->header.type = RESPONSE_RES;
     resp->header.id = id;
     resp->header.length = sizeof(res_response_t) + (ret < 0 ? 0 : ret);
-    resp->ret = (ret < 0) ? -errno : ret;
+    resp->ret = ret;
+    resp->_errno = _errno;
 
     assert(sizeof(data) >= resp->header.length);
 
@@ -507,7 +514,7 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
                               &result);
 
             /* send_addrinfo_reply() frees result */
-            return send_addrinfo_reply(out_fd, req->id, ret, result);
+            return send_addrinfo_reply(out_fd, req->id, ret, result, errno);
         }
 
         case REQUEST_NAMEINFO: {
@@ -528,7 +535,8 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
             return send_nameinfo_reply(out_fd, req->id, ret,
                                        ret == 0 && ni_req->gethost ? hostbuf : NULL,
-                                       ret == 0 && ni_req->getserv ? servbuf : NULL);
+                                       ret == 0 && ni_req->getserv ? servbuf : NULL,
+                                       errno);
         }
 
         case REQUEST_RES_QUERY:
@@ -930,6 +938,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             assert(q->type == REQUEST_ADDRINFO);
 
             q->ret = ai_resp->ret;
+            q->_errno = ai_resp->_errno;
             l = length - sizeof(addrinfo_response_t);
             p = (uint8_t*) resp + sizeof(addrinfo_response_t);
 
@@ -959,6 +968,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             assert(q->type == REQUEST_NAMEINFO);
 
             q->ret = ni_resp->ret;
+            q->_errno = ni_resp->_errno;
 
             if (ni_resp->hostlen)
                 q->host = strndup((const char*) ni_resp + sizeof(nameinfo_response_t), ni_resp->hostlen-1);
@@ -978,6 +988,7 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
             assert(q->type == REQUEST_RES_QUERY || q->type == REQUEST_RES_SEARCH);
 
             q->ret = res_resp->ret;
+            q->_errno = res_resp->_errno;
 
             if (res_resp->ret >= 0)  {
                 q->serv = malloc(res_resp->ret);
@@ -1059,6 +1070,7 @@ static asyncns_query_t *alloc_query(asyncns_t *asyncns) {
     q->id = asyncns->current_id;
     q->done_next = q->done_prev = NULL;
     q->ret = 0;
+    q->_errno = 0;
     q->addrinfo = NULL;
     q->userdata = NULL;
     q->host = q->serv = NULL;
@@ -1214,6 +1226,10 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
     }
 
     ret = q->ret;
+
+    if (ret == EAI_SYSTEM)
+        errno = q->_errno;
+
     asyncns_cancel(asyncns, q);
 
     return ret;
@@ -1287,15 +1303,19 @@ int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char **ans
     if (!q->done) {
         errno = EAGAIN;
         return -EAGAIN;
+    }
 
     *answer = (unsigned char *)q->serv;
     q->serv = NULL;
 
     ret = q->ret;
 
+    if (ret < 0)
+        errno = q->_errno;
+
     asyncns_cancel(asyncns, q);
 
-    return ret;
+    return ret < 0 ? -errno : ret;
 }
 
 asyncns_query_t* asyncns_getnext(asyncns_t *asyncns) {
