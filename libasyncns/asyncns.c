@@ -906,7 +906,7 @@ static void complete_query(asyncns_t *asyncns, asyncns_query_t *q) {
 }
 
 static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *length) {
-    addrinfo_serialization_t *s = p;
+    addrinfo_serialization_t s;
     size_t l;
     struct addrinfo *ai;
     assert(p);
@@ -916,7 +916,9 @@ static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *len
     if (*length < sizeof(addrinfo_serialization_t))
         return NULL;
 
-    l = sizeof(addrinfo_serialization_t) + s->ai_addrlen + s->canonname_len;
+    memcpy(&s, p, sizeof(s));
+
+    l = sizeof(addrinfo_serialization_t) + s.ai_addrlen + s.canonname_len;
     if (*length < l)
         return NULL;
 
@@ -927,23 +929,23 @@ static void *unserialize_addrinfo(void *p, struct addrinfo **ret_ai, size_t *len
     ai->ai_canonname = NULL;
     ai->ai_next = NULL;
 
-    if (s->ai_addrlen && !(ai->ai_addr = malloc(s->ai_addrlen)))
+    if (s.ai_addrlen && !(ai->ai_addr = malloc(s.ai_addrlen)))
         goto fail;
 
-    if (s->canonname_len && !(ai->ai_canonname = malloc(s->canonname_len)))
+    if (s.canonname_len && !(ai->ai_canonname = malloc(s.canonname_len)))
         goto fail;
 
-    ai->ai_flags = s->ai_flags;
-    ai->ai_family = s->ai_family;
-    ai->ai_socktype = s->ai_socktype;
-    ai->ai_protocol = s->ai_protocol;
-    ai->ai_addrlen = s->ai_addrlen;
+    ai->ai_flags = s.ai_flags;
+    ai->ai_family = s.ai_family;
+    ai->ai_socktype = s.ai_socktype;
+    ai->ai_protocol = s.ai_protocol;
+    ai->ai_addrlen = s.ai_addrlen;
 
     if (ai->ai_addr)
-        memcpy(ai->ai_addr, (uint8_t*) p + sizeof(addrinfo_serialization_t), s->ai_addrlen);
+        memcpy(ai->ai_addr, (uint8_t*) p + sizeof(addrinfo_serialization_t), s.ai_addrlen);
 
     if (ai->ai_canonname)
-        memcpy(ai->ai_canonname, (uint8_t*) p + sizeof(addrinfo_serialization_t) + s->ai_addrlen, s->canonname_len);
+        memcpy(ai->ai_canonname, (uint8_t*) p + sizeof(addrinfo_serialization_t) + s.ai_addrlen, s.canonname_len);
 
     *length -= l;
     *ret_ai = ai;
