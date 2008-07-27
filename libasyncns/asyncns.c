@@ -22,7 +22,7 @@
 #include <config.h>
 #endif
 
-/*#undef HAVE_PTHREAD */
+/* #undef HAVE_PTHREAD */
 
 #include <assert.h>
 #include <fcntl.h>
@@ -63,7 +63,8 @@ typedef enum {
     REQUEST_RES_QUERY,
     REQUEST_RES_SEARCH,
     RESPONSE_RES,
-    REQUEST_TERMINATE
+    REQUEST_TERMINATE,
+    RESPONSE_DIED
 } query_type_t;
 
 enum {
@@ -90,6 +91,7 @@ struct asyncns {
     asyncns_query_t *done_head, *done_tail;
 
     int n_queries;
+    int dead;
 };
 
 struct asyncns_query {
@@ -356,6 +358,18 @@ static int fd_cloexec(int fd) {
         return 0;
 
     return fcntl(fd, F_SETFD, v | FD_CLOEXEC);
+}
+
+static int send_died(int out_fd) {
+    rheader_t rh;
+    assert(out_fd > 0);
+
+    memset(&rh, 0, sizeof(rh));
+    rh.type = RESPONSE_DIED;
+    rh.id = 0;
+    rh.length = sizeof(rh);
+
+    return send(out_fd, &rh, rh.length, 0);
 }
 
 static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *length, size_t maxlength) {
@@ -651,8 +665,7 @@ static int process_worker(int in_fd, int out_fd) {
 
 fail:
 
-    close(in_fd);
-    close(out_fd);
+    send_died(out_fd);
 
     return 0;
 }
@@ -690,6 +703,8 @@ static void* thread_worker(void *p) {
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 
+    send_died(out_fd);
+
     return NULL;
 }
 
@@ -707,6 +722,7 @@ asyncns_t* asyncns_new(unsigned n_proc) {
     if (!(asyncns = malloc(sizeof(asyncns_t))))
         goto fail;
 
+    asyncns->dead = 0;
     asyncns->valid_workers = 0;
 
     for (i = 0; i < 4; i++)
@@ -895,6 +911,11 @@ static int handle_response(asyncns_t *asyncns, rheader_t *resp, size_t length) {
     assert(length >= sizeof(rheader_t));
     assert(length == resp->length);
 
+    if (resp->type == RESPONSE_DIED) {
+        asyncns->dead = 1;
+        return 0;
+    }
+
     if (!(q = lookup_query(asyncns, resp->id)))
         return 0;
 
@@ -982,6 +1003,11 @@ int asyncns_wait(asyncns_t *asyncns, int block) {
         rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t l;
 
+        if (asyncns->dead) {
+            errno = ECHILD;
+            return -1;
+        }
+
         if (((l = recv(asyncns->fds[RESPONSE_RECV_FD], buf, sizeof(buf), 0)) < 0)) {
             fd_set fds;
 
@@ -1047,6 +1073,11 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
     assert(asyncns);
     assert(node || service);
 
+    if (asyncns->dead) {
+        errno = ECHILD;
+        return NULL;
+    }
+
     if (!(q = alloc_query(asyncns)))
         return NULL;
 
@@ -1094,6 +1125,11 @@ int asyncns_getaddrinfo_done(asyncns_t *asyncns, asyncns_query_t* q, struct addr
     assert(q->asyncns == asyncns);
     assert(q->type == REQUEST_ADDRINFO);
 
+    if (asyncns->dead) {
+        errno = ECHILD;
+        return EAI_SYSTEM;
+    }
+
     if (!q->done)
         return EAI_AGAIN;
 
@@ -1113,6 +1149,11 @@ asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *
     assert(asyncns);
     assert(sa);
     assert(salen > 0);
+
+    if (asyncns->dead) {
+        errno = ECHILD;
+        return NULL;
+    }
 
     if (!(q = alloc_query(asyncns)))
         return NULL;
@@ -1154,6 +1195,11 @@ int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_h
     assert(!ret_host || hostlen);
     assert(!ret_serv || servlen);
 
+    if (asyncns->dead) {
+        errno = ECHILD;
+        return EAI_SYSTEM;
+    }
+
     if (!q->done)
         return EAI_AGAIN;
 
@@ -1180,6 +1226,11 @@ static asyncns_query_t * asyncns_res(asyncns_t *asyncns, query_type_t qtype, con
 
     assert(asyncns);
     assert(dname);
+
+    if (asyncns->dead) {
+        errno = ECHILD;
+        return NULL;
+    }
 
     if (!(q = alloc_query(asyncns)))
         return NULL;
@@ -1228,7 +1279,13 @@ int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char **ans
     assert(q->type == REQUEST_RES_QUERY || q->type == REQUEST_RES_SEARCH);
     assert(answer);
 
-    if (!q->done)
+    if (asyncns->dead) {
+        errno = ECHILD;
+        return -ECHILD;
+    }
+
+    if (!q->done) {
+        errno = EAGAIN;
         return -EAGAIN;
 
     *answer = (unsigned char *)q->serv;
