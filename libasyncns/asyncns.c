@@ -71,7 +71,8 @@ enum {
     REQUEST_RECV_FD = 0,
     REQUEST_SEND_FD = 1,
     RESPONSE_RECV_FD = 2,
-    RESPONSE_SEND_FD = 3
+    RESPONSE_SEND_FD = 3,
+    MESSAGE_FD_MAX = 4
 };
 
 struct asyncns {
@@ -773,10 +774,7 @@ void asyncns_free(asyncns_t *asyncns) {
 #endif
     }
 
-    /* Due to Solaris' broken thread cancelation we first send a
-     * termination request and then cancel the thread. */
-
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < MESSAGE_FD_MAX; i++)
         if (asyncns->fds[i] >= 0)
             close(asyncns->fds[i]);
 
