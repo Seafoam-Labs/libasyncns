@@ -47,7 +47,7 @@ AC_PROG_LIBTOOL
 
 test_gcc_flag() {
     AC_LANG_CONFTEST([int main() {}])
-    $CC -c conftest.c $CFLAGS $@ > /dev/null 2> /dev/null
+    $CC -c conftest.c $CFLAGS "$1" -o conftest.o > /dev/null 2> /dev/null
     ret=$?
     rm -f conftest.o
     return $ret
@@ -73,15 +73,14 @@ fi
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h stdlib.h string.h sys/socket.h unistd.h sys/prctl.h netinet/in.h])
-#AC_HEADER_RESOLV
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
-#AC_TYPE_SSIZE_T
-#AC_TYPE_UINT16_T
-#AC_TYPE_UINT8_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT8_T
 AC_HEADER_TIME
 
 # Checks for library functions.
@@ -94,17 +93,17 @@ AC_CHECK_FUNCS([memset select strndup setresuid setreuid strerror])
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(socket, connect)
 
-AC_CHECK_FUNC(res_query, , 
-  [AC_CHECK_LIB(resolv, res_query, [], 
+AC_CHECK_FUNC(res_query, ,
+  [AC_CHECK_LIB(resolv, res_query, [],
     [ save_libs="$LIBS"
       LIBS="-lresolv $LIBS"
       AC_MSG_CHECKING([for res_query in -lresolv (alternate version)])
       AC_LINK_IFELSE(
-        [AC_LANG_PROGRAM([[#include <resolv.h>]], [[res_query(0,0,0,0,0)]])], 
-        [ AC_MSG_RESULT(yes) ],  
+        [AC_LANG_PROGRAM([[#include <resolv.h>]], [[res_query(0,0,0,0,0)]])],
+        [ AC_MSG_RESULT(yes) ],
         [ AC_MSG_RESULT(no)
           LIBS="$save_libs"
-          AC_CHECK_LIB(bind, res_query, 
+          AC_CHECK_LIB(bind, res_query,
             [], [ AC_MSG_ERROR(res_query not found) ] ) ] ) ] )
   ]
 )
