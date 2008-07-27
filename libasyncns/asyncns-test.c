@@ -59,6 +59,9 @@ int main(int argc, char *argv[]) {
 
     q1 = asyncns_getaddrinfo(asyncns, argc >= 2 ? argv[1] : "www.heise.de", NULL, &hints);
 
+    if (!q1)
+        fprintf(stderr, "asyncns_getaddrinfo(): %s\n", strerror(errno));
+
     /* Make an address -> name query */
     memset(&sa, 0, sizeof(sa));
     sa.sin_family = AF_INET;
@@ -67,15 +70,23 @@ int main(int argc, char *argv[]) {
 
     q2 = asyncns_getnameinfo(asyncns, (struct sockaddr*) &sa, sizeof(sa), 0, 1, 1);
 
+    if (!q2)
+        fprintf(stderr, "asyncns_getnameinfo(): %s\n", strerror(errno));
+
     /* Make a res_query() call */
     q3 = asyncns_res_query(asyncns, "_xmpp-client._tcp.gmail.com", C_IN, T_SRV);
+
+    if (!q3)
+        fprintf(stderr, "asyncns_res_query(): %s\n", strerror(errno));
 
     /* Wait until the three queries are completed */
     while (!asyncns_isdone(asyncns, q1)
            || !asyncns_isdone(asyncns, q2)
            || !asyncns_isdone(asyncns, q3)) {
-        if (asyncns_wait(asyncns, 1) < 0)
+        if (asyncns_wait(asyncns, 1) < 0) {
+            fprintf(stderr, "asyncns_wait(): %s\n", strerror(errno));
             goto fail;
+        }
     }
 
     /* Interpret the result of the name -> addr query */
@@ -107,7 +118,7 @@ int main(int argc, char *argv[]) {
 
     /* Interpret the result of the SRV lookup */
     if ((ret = asyncns_res_done(asyncns, q3, &srv)) < 0) {
-        fprintf(stderr, "error: %s %i\n", strerror(ret), ret);
+        fprintf(stderr, "error: %s %i\n", strerror(errno), ret);
     } else if (ret == 0) {
         fprintf(stderr, "No reply for SRV lookup\n");
     } else {
