@@ -54,7 +54,7 @@ typedef struct asyncns asyncns_t;
 /** An opaque libasyncns query structure */
 typedef struct asyncns_query asyncns_query_t;
 
-/** Allocate a new libasyncns session with n_proc worker processes */
+/** Allocate a new libasyncns session with n_proc worker processes/threads */
 asyncns_t* asyncns_new(unsigned n_proc);
 
 /** Free a libasyncns session. This destroys all attached
@@ -90,21 +90,21 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
 int asyncns_getaddrinfo_done(asyncns_t *asyncns, asyncns_query_t* q, struct addrinfo **ret_res);
 
 /** Issue an address to name query on the specified session. The
-arguments are compatible with the ones of libc's getnameinfo(3). The
-function returns a new query object. When the query is completed you
-may retrieve the results using asyncns_getnameinfo_done(). Set gethost
-(resp. getserv) to non-zero if you want to query the hostname
-(resp. the service name). */
+ * arguments are compatible with the ones of libc's
+ * getnameinfo(3). The function returns a new query object. When the
+ * query is completed you may retrieve the results using
+ * asyncns_getnameinfo_done(). Set gethost (resp. getserv) to non-zero
+ * if you want to query the hostname (resp. the service name). */
 asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *sa, socklen_t salen, int flags, int gethost, int getserv);
 
-/** Retrieve the results of a preceding asyncns_getnameinfo)(
+/** Retrieve the results of a preceding asyncns_getnameinfo()
  * call. Returns the hostname and the service name in ret_host and
  * ret_serv. The query object q is destroyed by this call and may not
  * be used any further. If the query is not completed yet EAI_AGAIN is
  * returned. */
 int asyncns_getnameinfo_done(asyncns_t *asyncns, asyncns_query_t* q, char *ret_host, size_t hostlen, char *ret_serv, size_t servlen);
 
-/** Issue an resolver query on the specified session. The arguments are
+/** Issue a resolver query on the specified session. The arguments are
  * compatible with the ones of libc's res_query(3). The function returns a new
  * query object. When the query is completed you may retrieve the results using
  * asyncns_res_done().  */
@@ -116,11 +116,13 @@ asyncns_query_t* asyncns_res_query(asyncns_t *asyncns, const char *dname, int cl
  * asyncns_res_done().  */
 asyncns_query_t* asyncns_res_search(asyncns_t *asyncns, const char *dname, int class, int type);
 
-/** Retrieve the results of a preceding asyncns_res_query)( or
- * asyncns_res_search call.  The query object q is destroyed by this call and
- * may not be used any further. Returns a pointer to the answer of the
- * res_query call. If the query is not completed yet -EAGAIN is returned, on
- * failure -errno is returned otherwise the length of answer is returned. */
+/** Retrieve the results of a preceding asyncns_res_query() or
+ * asyncns_res_search call.  The query object q is destroyed by this
+ * call and may not be used any further. Returns a pointer to the
+ * answer of the res_query call. If the query is not completed yet
+ * -EAGAIN is returned, on failure -errno is returned, otherwise the
+ * length of answer is returned. Make sure to free the answer is a
+ * call to asyncns_freeanswer(). */
 int asyncns_res_done(asyncns_t *asyncns, asyncns_query_t* q, unsigned char **answer);
 
 /** Return the next completed query object. If no query has been
@@ -137,8 +139,8 @@ int asyncns_getnqueries(asyncns_t *asyncns);
 void asyncns_cancel(asyncns_t *asyncns, asyncns_query_t* q);
 
 /** Free the addrinfo structure as returned by
-asyncns_getaddrinfo_done(). Make sure to use this functions instead of
-the libc's freeaddrinfo()! */
+ * asyncns_getaddrinfo_done(). Make sure to use this functions instead
+ * of the libc's freeaddrinfo()! */
 void asyncns_freeaddrinfo(struct addrinfo *ai);
 
 /** Free the answer data as returned by asyncns_res_done().*/
