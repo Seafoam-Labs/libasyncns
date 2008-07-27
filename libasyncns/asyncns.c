@@ -180,7 +180,7 @@ static char *strndup(const char *s, size_t l) {
     if (!(n = malloc(a+1)))
         return NULL;
 
-    strncpy(n, s, a);
+    memcpy(n, s, a);
     n[a] = 0;
 
     return n;
