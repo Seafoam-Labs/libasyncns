@@ -141,6 +141,9 @@ asyncns_getaddrinfo_done(). Make sure to use this functions instead of
 the libc's freeaddrinfo()! */
 void asyncns_freeaddrinfo(struct addrinfo *ai);
 
+/** Free the answer data as returned by asyncns_res_done().*/
+void asyncns_freeanswer(unsigned char *answer);
+
 /** Returns non-zero when the query operation specified by q has been completed */
 int asyncns_isdone(asyncns_t *asyncns, asyncns_query_t*q);
 

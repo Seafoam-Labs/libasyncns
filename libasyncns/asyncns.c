@@ -1135,3 +1135,9 @@ void* asyncns_getuserdata(asyncns_t *asyncns, asyncns_query_t *q) {
 
     return q->userdata;
 }
+
+void asyncns_freeanswer(unsigned char *answer) {
+    assert(answer);
+
+    free(answer);
+}
