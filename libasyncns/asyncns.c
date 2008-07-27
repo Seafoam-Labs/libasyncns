@@ -694,6 +694,11 @@ fail:
 static void* thread_worker(void *p) {
     sigset_t fullset;
     int *fds = p;
+    int in_fd, out_fd;
+
+    in_fd = fds[REQUEST_RECV_FD];
+    out_fd = fds[RESPONSE_SEND_FD];
+    free(p);
 
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -706,7 +711,7 @@ static void* thread_worker(void *p) {
         rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t length;
 
-        if ((length = recv(fds[REQUEST_RECV_FD], buf, sizeof(buf), 0)) <= 0)
+        if ((length = recv(in_fd, buf, sizeof(buf), 0)) <= 0)
             break;
 
         /* We cannot cancel the thread while it is in on of the name
@@ -716,7 +721,7 @@ static void* thread_worker(void *p) {
          * terminate, and hence we should be safe. */
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
-        if (handle_request(fds[RESPONSE_SEND_FD], buf, (size_t) length) < 0)
+        if (handle_request(out_fd, buf, (size_t) length) < 0)
             break;
 
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -765,13 +770,35 @@ asyncns_t* asyncns_new(unsigned n_proc) {
         if ((asyncns->workers[asyncns->valid_workers] = fork()) < 0)
             goto fail;
         else if (asyncns->workers[asyncns->valid_workers] == 0) {
+            int ret;
+
             close(asyncns->fds[REQUEST_SEND_FD]);
             close(asyncns->fds[RESPONSE_RECV_FD]);
-            _exit(process_worker(asyncns->fds[REQUEST_RECV_FD], asyncns->fds[RESPONSE_SEND_FD]));
+            ret = process_worker(asyncns->fds[REQUEST_RECV_FD], asyncns->fds[RESPONSE_SEND_FD]);
+            close(asyncns->fds[REQUEST_RECV_FD]);
+            close(asyncns->fds[RESPONSE_SEND_FD]);
+            _exit(ret);
         }
 #else
-        if (pthread_create(&asyncns->workers[asyncns->valid_workers], NULL, thread_worker, asyncns->fds) != 0)
+
+        int *fds, r;
+
+        /* We need to copy this array because otherwise we might have
+         * a small chance of a race where the thread accesses fds when
+         * *asyncns is already dead */
+
+        if (!(fds = malloc(sizeof(asyncns->fds)))) {
+            errno = ENOMEM;
             goto fail;
+        }
+
+        memcpy(fds, asyncns->fds, sizeof(asyncns->fds));
+
+        if ((r = pthread_create(&asyncns->workers[asyncns->valid_workers], NULL, thread_worker, fds)) != 0) {
+            free(fds);
+            errno = r;
+            goto fail;
+        }
 #endif
     }
 
