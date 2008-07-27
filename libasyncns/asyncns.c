@@ -737,7 +737,6 @@ static void* thread_worker(void *p) {
 asyncns_t* asyncns_new(unsigned n_proc) {
     asyncns_t *asyncns = NULL;
     int i;
-    unsigned p;
     assert(n_proc >= 1);
 
     if (n_proc > MAX_WORKERS)
@@ -751,17 +750,16 @@ asyncns_t* asyncns_new(unsigned n_proc) {
     asyncns->dead = 0;
     asyncns->valid_workers = 0;
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < MESSAGE_FD_MAX; i++)
         asyncns->fds[i] = -1;
 
-    for (p = 0; p < MAX_QUERIES; p++)
-        asyncns->queries[p] = NULL;
+    memset(asyncns->queries, 0, sizeof(asyncns->queries));
 
     if (socketpair(PF_UNIX, SOCK_DGRAM, 0, asyncns->fds) < 0 ||
         socketpair(PF_UNIX, SOCK_DGRAM, 0, asyncns->fds+2) < 0)
         goto fail;
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < MESSAGE_FD_MAX; i++)
         fd_cloexec(asyncns->fds[i]);
 
     for (asyncns->valid_workers = 0; asyncns->valid_workers < n_proc; asyncns->valid_workers++) {
@@ -824,19 +822,29 @@ fail:
 }
 
 void asyncns_free(asyncns_t *asyncns) {
-    unsigned p;
     int i;
-    rheader_t req;
+    int saved_errno = errno;
+    unsigned p;
+
     assert(asyncns);
 
-    memset(&req, 0, sizeof(req));
-    req.type = REQUEST_TERMINATE;
-    req.length = sizeof(req);
-    req.id = 0;
+    if (asyncns->fds[REQUEST_SEND_FD] >= 0) {
+        rheader_t req;
 
-    /* Send one termiantion packet for each worker */
-    for (p = 0; p < asyncns->valid_workers; p++)
-        send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, 0);
+        memset(&req, 0, sizeof(req));
+        req.type = REQUEST_TERMINATE;
+        req.length = sizeof(req);
+        req.id = 0;
+
+        /* Send one termiantion packet for each worker */
+        for (p = 0; p < asyncns->valid_workers; p++)
+            send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, 0);
+    }
+
+    /* Close all communication channels */
+    for (i = 0; i < MESSAGE_FD_MAX; i++)
+        if (asyncns->fds[i] >= 0)
+            close(asyncns->fds[i]);
 
     /* Now terminate them forcibly */
     for (p = 0; p < asyncns->valid_workers; p++) {
@@ -855,15 +863,13 @@ void asyncns_free(asyncns_t *asyncns) {
 #endif
     }
 
-    for (i = 0; i < MESSAGE_FD_MAX; i++)
-        if (asyncns->fds[i] >= 0)
-            close(asyncns->fds[i]);
-
     for (p = 0; p < MAX_QUERIES; p++)
         if (asyncns->queries[p])
             asyncns_cancel(asyncns, asyncns->queries[p]);
 
     free(asyncns);
+
+    errno = saved_errno;
 }
 
 int asyncns_fd(asyncns_t *asyncns) {
