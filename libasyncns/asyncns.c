@@ -663,7 +663,9 @@ fail:
 static void* thread_worker(void *p) {
     sigset_t fullset;
     int *fds = p;
+
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
     /* No signals in this thread please */
     sigfillset(&fullset);
@@ -676,9 +678,17 @@ static void* thread_worker(void *p) {
         if ((length = recv(fds[REQUEST_RECV_FD], buf, sizeof(buf), 0)) <= 0)
             break;
 
+        /* We cannot cancel the thread while it is in on of the name
+         * resolver functions, because the cleanup might not happen
+         * properly. To work around this we temporarily disable
+         * cancellation. The request handling code will eventually
+         * terminate, and hence we should be safe. */
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
+
         if (handle_request(fds[RESPONSE_SEND_FD], buf, (size_t) length) < 0)
             break;
 
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 
     return NULL;
@@ -765,14 +775,20 @@ void asyncns_free(asyncns_t *asyncns) {
     for (p = 0; p < asyncns->valid_workers; p++)
         send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, 0);
 
-    /* No terminate them forcibly*/
+    /* Now terminate them forcibly */
     for (p = 0; p < asyncns->valid_workers; p++) {
 #ifndef HAVE_PTHREAD
         kill(asyncns->workers[p], SIGTERM);
         waitpid(asyncns->workers[p], NULL, 0);
 #else
         pthread_cancel(asyncns->workers[p]);
-        pthread_join(asyncns->workers[p], NULL);
+        pthread_detach(asyncns->workers[p]);
+
+        /* We don't join the thread here because there is no clean way
+           to cancel a running lookup if one should be active. So it
+           might take a while until the lookup thread actually
+           terminates. But we don't really care, because it won't leak
+           resources. */
 #endif
     }
 
