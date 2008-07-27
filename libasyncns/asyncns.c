@@ -124,6 +124,7 @@ typedef struct addrinfo_request {
 typedef struct addrinfo_response {
     struct rheader header;
     int ret;
+    /* followed by addrinfo_serialization[] */
 } addrinfo_response_t;
 
 typedef struct addrinfo_serialization {
@@ -133,6 +134,7 @@ typedef struct addrinfo_serialization {
     int ai_protocol;
     size_t ai_addrlen;
     size_t canonname_len;
+    /* Followed by ai_addr amd ai_canonname with variable lengths */
 } addrinfo_serialization_t;
 
 typedef struct nameinfo_request {
