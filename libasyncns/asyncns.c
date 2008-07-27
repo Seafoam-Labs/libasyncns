@@ -512,7 +512,6 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
                               ni_req->gethost ? hostbuf : NULL, ni_req->gethost ? sizeof(hostbuf) : 0,
                               ni_req->getserv ? servbuf : NULL, ni_req->getserv ? sizeof(servbuf) : 0,
                               ni_req->flags);
-            printf("%s %s\n", hostbuf, servbuf);
 
             return send_nameinfo_reply(out_fd, req->id, ret,
                                        ret == 0 && ni_req->gethost ? hostbuf : NULL,
