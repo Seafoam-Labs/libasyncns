@@ -40,6 +40,7 @@
 #include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <resolv.h>
+#include <dirent.h>
 
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -179,6 +180,156 @@ static char *strndup(const char *s, size_t l) {
 
 #endif
 
+#ifndef HAVE_PTHREAD
+
+static int close_allv(const int except_fds[]) {
+    struct rlimit rl;
+    int fd;
+    int saved_errno;
+
+#ifdef __linux__
+
+    DIR *d;
+
+    if ((d = opendir("/proc/self/fd"))) {
+
+        struct dirent *de;
+
+        while ((de = readdir(d))) {
+            int found;
+            long l;
+            char *e = NULL;
+            int i;
+
+            if (de->d_name[0] == '.')
+                continue;
+
+            errno = 0;
+            l = strtol(de->d_name, &e, 10);
+            if (errno != 0 || !e || *e) {
+                closedir(d);
+                errno = EINVAL;
+                return -1;
+            }
+
+            fd = (int) l;
+
+            if ((long) fd != l) {
+                closedir(d);
+                errno = EINVAL;
+                return -1;
+            }
+
+            if (fd < 3)
+                continue;
+
+            if (fd == dirfd(d))
+                continue;
+
+            found = 0;
+            for (i = 0; except_fds[i] >= 0; i++)
+                if (except_fds[i] == fd) {
+                    found = 1;
+                    break;
+                }
+
+            if (found)
+                continue;
+
+            if (close(fd) < 0) {
+                saved_errno = errno;
+                closedir(d);
+                errno = saved_errno;
+
+                return -1;
+            }
+        }
+
+        closedir(d);
+        return 0;
+    }
+
+#endif
+
+    if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
+        return -1;
+
+    for (fd = 0; fd < (int) rl.rlim_max; fd++) {
+        int i;
+
+        if (fd <= 3)
+            continue;
+
+        for (i = 0; except_fds[i] >= 0; i++)
+            if (except_fds[i] == fd)
+                continue;
+
+        if (close(fd) < 0 && errno != EBADF)
+            return -1;
+    }
+
+    return 0;
+}
+
+static int reset_sigsv(const int except[]) {
+    int sig;
+
+    for (sig = 1; sig < _NSIG; sig++) {
+        int reset = 1;
+
+        switch (sig) {
+            case SIGKILL:
+            case SIGSTOP:
+                reset = 0;
+                break;
+
+            default: {
+                int i;
+
+                for (i = 0; except[i] > 0; i++) {
+                    if (sig == except[i]) {
+                        reset = 0;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (reset) {
+            struct sigaction sa;
+
+            memset(&sa, 0, sizeof(sa));
+            sa.sa_handler = SIG_DFL;
+
+            /* On Linux the first two RT signals are reserved by
+             * glibc, and sigaction() will return EINVAL for them. */
+            if ((sigaction(sig, &sa, NULL) < 0))
+                if (errno != EINVAL)
+                    return -1;
+        }
+    }
+
+    return 0;
+}
+
+static int ignore_sigsv(const int ignore[]) {
+    int i;
+
+    for (i = 0; ignore[i] > 0; i++) {
+        struct sigaction sa;
+
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_handler = SIG_IGN;
+
+        if ((sigaction(ignore[i], &sa, NULL) < 0))
+            return -1;
+    }
+
+    return 0;
+}
+
+#endif
+
 static int fd_nonblock(int fd) {
     int i;
     assert(fd >= 0);
@@ -204,7 +355,6 @@ static int fd_cloexec(int fd) {
 
     return fcntl(fd, F_SETFD, v | FD_CLOEXEC);
 }
-
 
 static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *length, size_t maxlength) {
     addrinfo_serialization_t s;
@@ -402,6 +552,17 @@ static int handle_request(int out_fd, const rheader_t *req, size_t length) {
 
 static int process_worker(int in_fd, int out_fd) {
     int have_death_sig = 0;
+    int good_fds[3];
+
+    const int ignore_sigs[] = {
+        SIGINT,
+        SIGHUP,
+        SIGPIPE,
+        SIGUSR1,
+        SIGUSR2,
+        -1
+    };
+
     assert(in_fd > 2);
     assert(out_fd > 2);
 
@@ -409,34 +570,45 @@ static int process_worker(int in_fd, int out_fd) {
     close(1);
     close(2);
 
-    open("/dev/null", O_RDONLY);
-    open("/dev/null", O_WRONLY);
-    open("/dev/null", O_WRONLY);
+    if (open("/dev/null", O_RDONLY) != 0)
+        goto fail;
 
-    chdir("/");
+    if (open("/dev/null", O_WRONLY) != 1)
+        goto fail;
+
+    if (open("/dev/null", O_WRONLY) != 2)
+        goto fail;
+
+    if (chdir("/") < 0)
+        goto fail;
 
     if (geteuid() == 0) {
         struct passwd *pw;
+        int r;
 
         if ((pw = getpwnam("nobody"))) {
 #ifdef HAVE_SETRESUID
-            setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid);
+            r = setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid);
 #elif HAVE_SETREUID
-            setreuid(pw->pw_uid, pw->pw_uid);
+            r = setreuid(pw->pw_uid, pw->pw_uid);
 #else
-            setuid(pw->pw_uid);
-            seteuid(pw->pw_uid);
+            if ((r = setuid(pw->pw_uid)) >= 0)
+                r = seteuid(pw->pw_uid);
 #endif
+            if (r < 0)
+                goto fail;
         }
     }
 
-    signal(SIGTERM, SIG_DFL);
+    if (reset_sigsv(ignore_sigs) < 0)
+        goto fail;
 
-    signal(SIGINT, SIG_IGN);
-    signal(SIGHUP, SIG_IGN);
-    signal(SIGPIPE, SIG_IGN);
-    signal(SIGUSR1, SIG_IGN);
-    signal(SIGUSR2, SIG_IGN);
+    if (ignore_sigsv(ignore_sigs) < 0)
+        goto fail;
+
+    good_fds[0] = in_fd; good_fds[1] = out_fd; good_fds[2] = -1;
+    if (close_allv(good_fds) < 0)
+        goto fail;
 
 #ifdef PR_SET_PDEATHSIG
     if (prctl(PR_SET_PDEATHSIG, SIGTERM) >= 0)
@@ -475,6 +647,8 @@ static int process_worker(int in_fd, int out_fd) {
         if (handle_request(out_fd, buf, (size_t) length) < 0)
             break;
     }
+
+fail:
 
     close(in_fd);
     close(out_fd);
