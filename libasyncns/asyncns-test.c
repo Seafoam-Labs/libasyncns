@@ -31,6 +31,8 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <assert.h>
+#include <signal.h>
+#include <errno.h>
 
 #include "asyncns.h"
 
@@ -43,7 +45,9 @@ int main(int argc, char *argv[]) {
     char host[NI_MAXHOST] = "", serv[NI_MAXSERV] = "";
     unsigned char *srv;
 
-    if (!(asyncns = asyncns_new(1))) {
+    signal(SIGCHLD, SIG_IGN);
+
+    if (!(asyncns = asyncns_new(2))) {
         fprintf(stderr, "asyncns_new() failed\n");
         goto fail;
     }
