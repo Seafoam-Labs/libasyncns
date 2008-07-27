@@ -20,7 +20,7 @@
 # <http://www.gnu.org/licenses/>.
 
 AC_PREREQ(2.59)
-AC_INIT([libasyncns],[0.3],[mznflapaf (at) 0pointer (dot) de])
+AC_INIT([libasyncns],[0.4],[mznflapaf (at) 0pointer (dot) de])
 AC_CONFIG_SRCDIR([libasyncns/asyncns.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign 1.9 -Wall])
