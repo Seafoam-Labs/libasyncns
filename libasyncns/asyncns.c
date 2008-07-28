@@ -1455,6 +1455,11 @@ void asyncns_freeanswer(unsigned char *answer) {
     if (!answer)
         return;
 
+    /* Please note that this function is new in libasyncns 0.4. In
+     * older versions you were supposed to free the answer directly
+     * with free(). Hence, if this function is changed to do more than
+     * just a simple free() this must be considered ABI/API breakage! */
+
     free(answer);
 
     errno = saved_errno;
