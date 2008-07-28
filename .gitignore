@@ -23,4 +23,5 @@ ltmain.sh
 missing
 stamp-*
 README
+*.tar.gz
 config.rpath
