@@ -92,6 +92,8 @@ processes instead.</p>
 
 <p>Version @PACKAGE_VERSION@ is quite stable and feature complete.</p>
 
+<p>Damien Th&#233;bault has written a Python module <a href="https://launchpad.net/libasyncns-python">libasyncns-python</a> that wraps the libasyncns C API.</p>
+
 <h2><a name="documentation">Documentation</a></h2>
 
 <p>You may browse the <a href="http://www.doxygen.org/">Doxygen</a>
