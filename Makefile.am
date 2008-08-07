@@ -28,7 +28,7 @@ pkgconfig_DATA = libasyncns.pc
 README:
 	rm -f README
 	$(MAKE) -C doc README
-	cd $(srcdir) && ln -s doc/README README
+	ln -s doc/README README
 
 homepage: all dist doxygen
 	test -d $$HOME/homepage/private
