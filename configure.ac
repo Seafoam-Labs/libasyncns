@@ -95,24 +95,7 @@ AC_CHECK_FUNC(res_query, ,
 
 ACX_PTHREAD
 
-# LYNX documentation generation
-AC_ARG_ENABLE(lynx,
-        AS_HELP_STRING([--disable-lynx],[Turn off lynx usage for documentation generation]),
-[case "${enableval}" in
-  yes) lynx=yes ;;
-  no)  lynx=no ;;
-  *) AC_MSG_ERROR(bad value ${enableval} for --disable-lynx) ;;
-esac],[lynx=yes])
-
-if test x$lynx = xyes ; then
-   AC_CHECK_PROG(have_lynx, lynx, yes, no)
-
-   if test x$have_lynx = xno ; then
-     AC_MSG_WARN([*** lynx not found, plain text README will not be built ***])
-   fi
-fi
-
-AM_CONDITIONAL([USE_LYNX], [test "x$lynx" = xyes])
+ZP_LYNX_DOC
 
 AC_CONFIG_FILES([Makefile libasyncns/Makefile doc/Makefile doc/README.html doxygen/Makefile doxygen/doxygen.conf libasyncns.pc])
 AC_OUTPUT
