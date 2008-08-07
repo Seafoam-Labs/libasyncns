@@ -47,29 +47,11 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
-test_gcc_flag() {
-    AC_LANG_CONFTEST([int main() {}])
-    $CC -c conftest.c $CFLAGS "$1" -o conftest.o > /dev/null 2> /dev/null
-    ret=$?
-    rm -f conftest.o
-    return $ret
-}
+DESIRED_FLAGS="-Wall -W -Wextra -pedantic -pipe -Wformat -Wold-style-definition -Wdeclaration-after-statement -Wfloat-equal -Wmissing-declarations -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wmissing-noreturn -Wshadow -Wendif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Winline -Wno-unused-parameter"
 
-# If using GCC specify some additional parameters
-if test "x$GCC" = "xyes" ; then
-
-    DESIRED_FLAGS="-Wall -W -Wextra -pedantic -pipe -Wformat -Wold-style-definition -Wdeclaration-after-statement -Wfloat-equal -Wmissing-declarations -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wmissing-noreturn -Wshadow -Wendif-labels -Wpointer-arith -Wbad-function-cast -Wcast-qual -Wcast-align -Wwrite-strings -Winline -Wno-unused-parameter"
-
-    for flag in $DESIRED_FLAGS ; do
-        AC_MSG_CHECKING([whether $CC accepts $flag])
-        if test_gcc_flag $flag ; then
-           CFLAGS="$CFLAGS $flag"
-           AC_MSG_RESULT([yes])
-        else
-           AC_MSG_RESULT([no])
-        fi
-    done
-fi
+for flag in $DESIRED_FLAGS ; do
+  CC_CHECK_CFLAGS([$flag], [CFLAGS="$CFLAGS $flag"])
+done
 
 # Checks for header files.
 AC_HEADER_ASSERT
