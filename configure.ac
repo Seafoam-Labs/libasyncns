@@ -38,7 +38,7 @@ fi
 AC_PROG_CC
 AC_PROG_CPP
 
-AC_GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
 
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -112,7 +112,7 @@ ACX_PTHREAD
 
 # LYNX documentation generation
 AC_ARG_ENABLE(lynx,
-        AC_HELP_STRING(--disable-lynx,Turn off lynx usage for documentation generation),
+        AS_HELP_STRING([--disable-lynx],[Turn off lynx usage for documentation generation]),
 [case "${enableval}" in
   yes) lynx=yes ;;
   no)  lynx=no ;;
