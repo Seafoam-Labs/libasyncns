@@ -19,7 +19,7 @@
 # License along with libasyncns. If not, see
 # <http://www.gnu.org/licenses/>.
 
-AC_PREREQ(2.59)
+AC_PREREQ(2.62)
 AC_INIT([libasyncns],[0.5],[mznflapaf (at) 0pointer (dot) de])
 AC_CONFIG_SRCDIR([libasyncns/asyncns.c])
 AC_CONFIG_HEADERS([config.h])
