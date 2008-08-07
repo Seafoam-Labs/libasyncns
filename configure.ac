@@ -70,6 +70,7 @@ if test "x$GCC" = "xyes" ; then
 fi
 
 # Checks for header files.
+AC_HEADER_ASSERT
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h stdlib.h string.h sys/socket.h unistd.h sys/prctl.h netinet/in.h])
