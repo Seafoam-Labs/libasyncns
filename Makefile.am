@@ -16,6 +16,8 @@
 # License along with libasyncns. If not, see
 # <http://www.gnu.org/licenses/>.
 
+ACLOCAL_AMFLAGS = -I m4
+
 EXTRA_DIST = bootstrap.sh README LICENSE
 SUBDIRS=libasyncns doc doxygen
 
