@@ -429,7 +429,7 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
 
         for (k = ai; k; k = k->ai_next) {
 
-            if (!(p = serialize_addrinfo(p, ai, &resp->header.length, (char*) data + BUFSIZE - (char*) p))) {
+            if (!(p = serialize_addrinfo(p, k, &resp->header.length, (char*) data + BUFSIZE - (char*) p))) {
                 resp->ret = EAI_MEMORY;
                 break;
             }
