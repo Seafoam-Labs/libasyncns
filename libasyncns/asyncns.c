@@ -707,9 +707,6 @@ static void* thread_worker(void *p) {
     out_fd = fds[RESPONSE_SEND_FD];
     free(p);
 
-    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
-    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-
     /* No signals in this thread please */
     sigfillset(&fullset);
     pthread_sigmask(SIG_BLOCK, &fullset, NULL);
@@ -721,17 +718,8 @@ static void* thread_worker(void *p) {
         if ((length = recv(in_fd, buf, sizeof(buf), 0)) <= 0)
             break;
 
-        /* We cannot cancel the thread while it is in on of the name
-         * resolver functions, because the cleanup might not happen
-         * properly. To work around this we temporarily disable
-         * cancellation. The request handling code will eventually
-         * terminate, and hence we should be safe. */
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
-
         if (handle_request(out_fd, buf, (size_t) length) < 0)
             break;
-
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 
     send_died(out_fd);
@@ -859,7 +847,6 @@ void asyncns_free(asyncns_t *asyncns) {
         kill(asyncns->workers[p], SIGTERM);
         waitpid(asyncns->workers[p], NULL, 0);
 #else
-        pthread_cancel(asyncns->workers[p]);
         pthread_detach(asyncns->workers[p]);
 
         /* We don't join the thread here because there is no clean way
