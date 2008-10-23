@@ -20,14 +20,14 @@
 # <http://www.gnu.org/licenses/>.
 
 AC_PREREQ(2.59)
-AC_INIT([libasyncns],[0.5],[mznflapaf (at) 0pointer (dot) de])
+AC_INIT([libasyncns],[0.6],[mznflapaf (at) 0pointer (dot) de])
 AC_CONFIG_SRCDIR([libasyncns/asyncns.c])
 AC_CONFIG_HEADERS([config.h])
 AM_INIT_AUTOMAKE([foreign 1.9 -Wall])
 
 AC_SUBST(PACKAGE_URL, [http://0pointer.de/lennart/projects/libasyncns/])
 
-AC_SUBST(LIBASYNCNS_VERSION_INFO, [2:1:2])
+AC_SUBST(LIBASYNCNS_VERSION_INFO, [3:0:3])
 
 if type -p stow > /dev/null && test -d /usr/local/stow ; then
    AC_MSG_NOTICE([*** Found /usr/local/stow: default install prefix set to /usr/local/stow/${PACKAGE_NAME}-${PACKAGE_VERSION} ***])
