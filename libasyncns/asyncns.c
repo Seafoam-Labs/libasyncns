@@ -51,6 +51,10 @@
 
 #include "asyncns.h"
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 #define MAX_WORKERS 16
 #define MAX_QUERIES 256
 #define BUFSIZE (10240)
@@ -381,7 +385,7 @@ static int send_died(int out_fd) {
     rh.id = 0;
     rh.length = sizeof(rh);
 
-    return send(out_fd, &rh, rh.length, 0);
+    return send(out_fd, &rh, rh.length, MSG_NOSIGNAL);
 }
 
 static void *serialize_addrinfo(void *p, const struct addrinfo *ai, size_t *length, size_t maxlength) {
@@ -444,7 +448,7 @@ static int send_addrinfo_reply(int out_fd, unsigned id, int ret, struct addrinfo
     if (ai)
         freeaddrinfo(ai);
 
-    return send(out_fd, resp, resp->header.length, 0);
+    return send(out_fd, resp, resp->header.length, MSG_NOSIGNAL);
 }
 
 static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *host, const char *serv, int _errno, int _h_errno) {
@@ -475,7 +479,7 @@ static int send_nameinfo_reply(int out_fd, unsigned id, int ret, const char *hos
     if (serv)
         memcpy((uint8_t *)data + sizeof(nameinfo_response_t) + hl, serv, sl);
 
-    return send(out_fd, resp, resp->header.length, 0);
+    return send(out_fd, resp, resp->header.length, MSG_NOSIGNAL);
 }
 
 static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, int ret, int _errno, int _h_errno) {
@@ -497,7 +501,7 @@ static int send_res_reply(int out_fd, unsigned id, const unsigned char *answer, 
     if (ret > 0)
         memcpy((uint8_t *)data + sizeof(res_response_t), answer, ret);
 
-    return send(out_fd, resp, resp->header.length, 0);
+    return send(out_fd, resp, resp->header.length, MSG_NOSIGNAL);
 }
 
 static int handle_request(int out_fd, const rheader_t *req, size_t length) {
@@ -833,7 +837,7 @@ void asyncns_free(asyncns_t *asyncns) {
 
         /* Send one termiantion packet for each worker */
         for (p = 0; p < asyncns->valid_workers; p++)
-            send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, 0);
+            send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, MSG_NOSIGNAL);
     }
 
     /* Close all communication channels */
@@ -1176,7 +1180,7 @@ asyncns_query_t* asyncns_getaddrinfo(asyncns_t *asyncns, const char *node, const
     if (service)
         strcpy((char*) req + sizeof(addrinfo_request_t) + req->node_len, service);
 
-    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
+    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, MSG_NOSIGNAL) < 0)
         goto fail;
 
     return q;
@@ -1254,7 +1258,7 @@ asyncns_query_t* asyncns_getnameinfo(asyncns_t *asyncns, const struct sockaddr *
 
     memcpy((uint8_t*) req + sizeof(nameinfo_request_t), sa, salen);
 
-    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
+    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, MSG_NOSIGNAL) < 0)
         goto fail;
 
     return q;
@@ -1340,7 +1344,7 @@ static asyncns_query_t * asyncns_res(asyncns_t *asyncns, query_type_t qtype, con
 
     strcpy((char*) req + sizeof(res_request_t), dname);
 
-    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, 0) < 0)
+    if (send(asyncns->fds[REQUEST_SEND_FD], req, req->header.length, MSG_NOSIGNAL) < 0)
         goto fail;
 
     return q;
