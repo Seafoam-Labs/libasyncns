@@ -72,7 +72,7 @@ fi
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h stdlib.h string.h sys/socket.h unistd.h sys/prctl.h netinet/in.h])
+AC_CHECK_HEADERS([arpa/inet.h fcntl.h netdb.h stdlib.h string.h sys/socket.h unistd.h sys/prctl.h netinet/in.h arpa/nameser_compat.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
@@ -92,8 +92,6 @@ AC_CHECK_FUNCS([memset select strndup setresuid setreuid strerror])
 
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(socket, connect)
-
-AC_CHECK_HEADERS([arpa/nameser_compat.h])
 
 AC_CHECK_FUNC(res_query, ,
   [AC_CHECK_LIB(resolv, res_query, [],

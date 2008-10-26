@@ -34,6 +34,10 @@
 #include <signal.h>
 #include <errno.h>
 
+#if HAVE_ARPA_NAMESER_COMPAT_H
+#include <arpa/nameser_compat.h>
+#endif
+
 #include "asyncns.h"
 
 int main(int argc, char *argv[]) {
