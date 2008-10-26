@@ -41,6 +41,10 @@
 #include <resolv.h>
 #include <dirent.h>
 
+#if HAVE_ARPA_NAMESER_COMPAT_H
+#include <arpa/nameser_compat.h>
+#endif
+
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
 #endif
@@ -201,7 +205,6 @@ static char *strndup(const char *s, size_t l) {
 static int close_allv(const int except_fds[]) {
     struct rlimit rl;
     int fd;
-    int saved_errno;
 
 #ifdef __linux__
 
@@ -255,6 +258,8 @@ static int close_allv(const int except_fds[]) {
                 continue;
 
             if (close(fd) < 0) {
+                int saved_errno;
+
                 saved_errno = errno;
                 closedir(d);
                 errno = saved_errno;
@@ -293,7 +298,7 @@ static int reset_sigsv(const int except[]) {
     int sig;
     assert(except);
 
-    for (sig = 1; sig < _NSIG; sig++) {
+    for (sig = 1; sig < NSIG; sig++) {
         int reset = 1;
 
         switch (sig) {
