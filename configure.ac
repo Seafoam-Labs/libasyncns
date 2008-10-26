@@ -93,6 +93,8 @@ AC_CHECK_FUNCS([memset select strndup setresuid setreuid strerror])
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(socket, connect)
 
+AC_CHECK_HEADERS([arpa/nameser_compat.h])
+
 AC_CHECK_FUNC(res_query, ,
   [AC_CHECK_LIB(resolv, res_query, [],
     [ save_libs="$LIBS"
