@@ -686,7 +686,8 @@ static int process_worker(int in_fd, int out_fd) {
 
         if ((length = recv(in_fd, buf, sizeof(buf), 0)) <= 0) {
 
-            if (length < 0 && errno == EAGAIN)
+            if (length < 0 &&
+                (errno == EAGAIN || errno == EINTR))
                 continue;
 
             break;
@@ -699,7 +700,6 @@ static int process_worker(int in_fd, int out_fd) {
     ret = 0;
 
 fail:
-
     send_died(out_fd);
 
     return ret;
@@ -708,30 +708,34 @@ fail:
 #else
 
 static void* thread_worker(void *p) {
+    asyncns_t *asyncns = p;
     sigset_t fullset;
-    int *fds = p;
-    int in_fd, out_fd;
-
-    in_fd = fds[REQUEST_RECV_FD];
-    out_fd = fds[RESPONSE_SEND_FD];
-    free(p);
 
     /* No signals in this thread please */
     sigfillset(&fullset);
     pthread_sigmask(SIG_BLOCK, &fullset, NULL);
 
-    for (;;) {
+    while (!asyncns->dead) {
         rheader_t buf[BUFSIZE/sizeof(rheader_t) + 1];
         ssize_t length;
 
-        if ((length = recv(in_fd, buf, sizeof(buf), 0)) <= 0)
+        if ((length = recv(asyncns->fds[REQUEST_RECV_FD], buf, sizeof(buf), 0)) <= 0) {
+
+            if (length < 0 &&
+                (errno == EAGAIN || errno == EINTR))
+                continue;
+
+            break;
+        }
+
+        if (asyncns->dead)
             break;
 
-        if (handle_request(out_fd, buf, (size_t) length) < 0)
+        if (handle_request(asyncns->fds[RESPONSE_SEND_FD], buf, (size_t) length) < 0)
             break;
     }
 
-    send_died(out_fd);
+    send_died(asyncns->fds[RESPONSE_SEND_FD]);
 
     return NULL;
 }
@@ -782,22 +786,9 @@ asyncns_t* asyncns_new(unsigned n_proc) {
             _exit(ret);
         }
 #else
+        int r;
 
-        int *fds, r;
-
-        /* We need to copy this array because otherwise we might have
-         * a small chance of a race where the thread accesses fds when
-         * *asyncns is already dead */
-
-        if (!(fds = malloc(sizeof(asyncns->fds)))) {
-            errno = ENOMEM;
-            goto fail;
-        }
-
-        memcpy(fds, asyncns->fds, sizeof(asyncns->fds));
-
-        if ((r = pthread_create(&asyncns->workers[asyncns->valid_workers], NULL, thread_worker, fds)) != 0) {
-            free(fds);
+        if ((r = pthread_create(&asyncns->workers[asyncns->valid_workers], NULL, thread_worker, asyncns)) != 0) {
             errno = r;
             goto fail;
         }
@@ -832,6 +823,8 @@ void asyncns_free(asyncns_t *asyncns) {
 
     assert(asyncns);
 
+    asyncns->dead = 1;
+
     if (asyncns->fds[REQUEST_SEND_FD] >= 0) {
         rheader_t req;
 
@@ -840,31 +833,31 @@ void asyncns_free(asyncns_t *asyncns) {
         req.length = sizeof(req);
         req.id = 0;
 
-        /* Send one termiantion packet for each worker */
+        /* Send one termination packet for each worker */
         for (p = 0; p < asyncns->valid_workers; p++)
             send(asyncns->fds[REQUEST_SEND_FD], &req, req.length, MSG_NOSIGNAL);
+    }
+
+    /* Now terminate them and wait until they are gone. */
+    for (p = 0; p < asyncns->valid_workers; p++) {
+#ifndef HAVE_PTHREAD
+        kill(asyncns->workers[p], SIGTERM);
+        for (;;) {
+            if (waitpid(asyncns->workers[p], NULL, 0) >= 0 || errno != EINTR)
+                break;
+        }
+#else
+        for (;;) {
+            if (pthread_join(asyncns->workers[p], NULL) != EINTR)
+                break;
+        }
+#endif
     }
 
     /* Close all communication channels */
     for (i = 0; i < MESSAGE_FD_MAX; i++)
         if (asyncns->fds[i] >= 0)
             close(asyncns->fds[i]);
-
-    /* Now terminate them forcibly */
-    for (p = 0; p < asyncns->valid_workers; p++) {
-#ifndef HAVE_PTHREAD
-        kill(asyncns->workers[p], SIGTERM);
-        waitpid(asyncns->workers[p], NULL, 0);
-#else
-        pthread_detach(asyncns->workers[p]);
-
-        /* We don't join the thread here because there is no clean way
-           to cancel a running lookup if one should be active. So it
-           might take a while until the lookup thread actually
-           terminates. But we don't really care, because it won't leak
-           resources. */
-#endif
-    }
 
     for (p = 0; p < MAX_QUERIES; p++)
         if (asyncns->queries[p])
