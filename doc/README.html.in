@@ -38,6 +38,10 @@ Lesser General Public License for more details.</p>
 
 <h2><a name="news">News</a></h2>
 
+<div class="news-date">Tue 28 Oct
+2008: </div> <p class="news-text"><a href="@PACKAGE_URL@libasyncns-0.7.tar.gz">Version
+0.7</a> released; changes include: rework thread shutdown logic.</p>
+
 <div class="news-date">Fri 24 Oct
 2008: </div> <p class="news-text"><a href="@PACKAGE_URL@libasyncns-0.6.tar.gz">Version
 0.6</a> released; changes include: save and restore <tt>h_errno</tt>
@@ -151,7 +155,7 @@ compilation and <tt>make install</tt> (as root) for installation of
 <p>If you want to be notified whenever I release a new version of this software use the subscription feature of <a href="http://freshmeat.net/projects/libasyncns/">Freshmeat</a>.</p>
 
 <hr/>
-<address class="grey">Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;, August 2008</address>
+<address class="grey">Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;, October 2008</address>
 
 </body>
 </html>
