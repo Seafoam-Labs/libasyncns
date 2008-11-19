@@ -83,6 +83,8 @@ ACF_SEARCH_FUNCTION([res_query], [-lresolv, -lbind],
 
 ACX_PTHREAD
 
+CC_NOUNDEFINED
+
 ZP_LYNX_DOC
 
 AC_CONFIG_FILES([Makefile libasyncns/Makefile doc/Makefile doc/README.html doxygen/Makefile doxygen/doxygen.conf libasyncns.pc])
