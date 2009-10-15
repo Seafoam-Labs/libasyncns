@@ -19,12 +19,12 @@ dnl You should have received a copy of the GNU Lesser General Public
 dnl License along with libasyncns. If not, see
 dnl <http://www.gnu.org/licenses/>.
 
-AC_PREREQ(2.62)
+AC_PREREQ(2.63)
 AC_INIT([libasyncns],[0.7],[mznflapaf (at) 0pointer (dot) de])
 AC_CONFIG_SRCDIR([libasyncns/asyncns.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([foreign 1.9 -Wall])
+AM_INIT_AUTOMAKE([foreign 1.10 -Wall])
 
 AC_SUBST(PACKAGE_URL, [http://0pointer.de/lennart/projects/libasyncns/])
 
@@ -35,9 +35,12 @@ if type -p stow > /dev/null && test -d /usr/local/stow ; then
    ac_default_prefix="/usr/local/stow/${PACKAGE_NAME}-${PACKAGE_VERSION}"
 fi
 
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_CC_C99
+AM_PROG_CC_C_O
 AC_PROG_CPP
 
 AC_USE_SYSTEM_EXTENSIONS
@@ -70,6 +73,8 @@ AC_FUNC_MALLOC
 AC_FUNC_SELECT_ARGTYPES
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([memset select strndup setresuid setreuid strerror])
+
+AC_SYS_LARGEFILE
 
 AC_CHECK_LIB(nsl, gethostbyname)
 AC_CHECK_LIB(socket, connect)
