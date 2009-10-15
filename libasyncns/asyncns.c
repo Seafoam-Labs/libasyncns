@@ -214,7 +214,7 @@ static char *strndup(const char *s, size_t l) {
 
 static int close_allv(const int except_fds[]) {
     struct rlimit rl;
-    int fd;
+    int fd, maxfd;
 
 #ifdef __linux__
 
@@ -284,18 +284,23 @@ static int close_allv(const int except_fds[]) {
 
 #endif
 
-    if (getrlimit(RLIMIT_NOFILE, &rl) < 0)
-        return -1;
+    if (getrlimit(RLIMIT_NOFILE, &rl) > 0)
+        maxfd = (int) rl.rlim_max;
+    else
+        maxfd = sysconf(_SC_OPEN_MAX);
 
-    for (fd = 0; fd < (int) rl.rlim_max; fd++) {
-        int i;
+    for (fd = 3; fd < maxfd; fd++) {
+        int i, found;
 
-        if (fd <= 3)
-            continue;
-
+        found = 0;
         for (i = 0; except_fds[i] >= 0; i++)
-            if (except_fds[i] == fd)
+            if (except_fds[i] == fd) {
+                found = 1;
                 continue;
+            }
+
+        if (found)
+            continue;
 
         if (close(fd) < 0 && errno != EBADF)
             return -1;
