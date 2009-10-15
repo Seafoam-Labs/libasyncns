@@ -40,10 +40,9 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <dirent.h>
-
-#if HAVE_ARPA_NAMESER_COMPAT_H
-#include <arpa/nameser_compat.h>
-#endif
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <stdint.h>
 
 #ifdef HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
