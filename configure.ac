@@ -20,7 +20,7 @@ dnl License along with libasyncns. If not, see
 dnl <http://www.gnu.org/licenses/>.
 
 AC_PREREQ(2.63)
-AC_INIT([libasyncns],[0.7],[mznflapaf (at) 0pointer (dot) de])
+AC_INIT([libasyncns],[0.8],[mznflapaf (at) 0pointer (dot) de])
 AC_CONFIG_SRCDIR([libasyncns/asyncns.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
