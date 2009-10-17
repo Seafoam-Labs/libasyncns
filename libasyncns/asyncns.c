@@ -295,7 +295,7 @@ static int close_allv(const int except_fds[]) {
         for (i = 0; except_fds[i] >= 0; i++)
             if (except_fds[i] == fd) {
                 found = 1;
-                continue;
+                break;
             }
 
         if (found)
