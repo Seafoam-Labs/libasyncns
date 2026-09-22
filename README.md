@@ -48,7 +48,7 @@ service.
 
 ## Building a Devario package
 
-The root [PKGBUILD](PKGBUILD) builds **1:0.8+r3+g68cd5af-5** for x86_64. It
+The root [PKGBUILD](PKGBUILD) builds **1:0.8+r3+g68cd5af-6** for x86_64. It
 clones the source directly from this repository over HTTPS and checks out the
 original upstream commit:
 
@@ -59,8 +59,17 @@ git+https://github.com/Seafoam-Labs/libasyncns.git#commit=68cd5aff1467638c086f1b
 The commit is pinned independently of changes to the packaging branch. Git
 sources use `sha256sums=('SKIP')`; source selection is fixed by the full commit
 ID, with TLS verification enabled. This snapshot matches Arch's source revision;
-package release `5` sorts above Arch's `1:0.8+r3+g68cd5af-3` and our earlier
+package release `6` sorts above Arch's `1:0.8+r3+g68cd5af-3` and our earlier
 packages.
+
+The source URL is explicitly set to Seafoam Labs, and the source cache and
+checkout are named `seafoam-libasyncns` to avoid reusing an old `libasyncns`
+source cache. There is no fallback to 0pointer or another source host.
+
+For Remora, configure the package's recipe repository as
+`https://github.com/Seafoam-Labs/libasyncns.git`, branch `main`, PKGBUILD path
+`PKGBUILD`. An entry still tracking Arch's packaging repository will continue
+to use Arch's recipe and its 0pointer source URL, regardless of changes here.
 
 Use an Arch-compatible `base-devel` environment with `glibc`, `git`, and `lynx`
 installed:
