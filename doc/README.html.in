@@ -154,9 +154,7 @@ compilation and <tt>make install</tt> (as root) for installation of
 
 <pre>git clone git://git.0pointer.de/libasyncns</pre>
 
-<p>You may find an up to date Debian package of <tt>libasyncns</tt> on the <a href="http://packages.debian.org/libasyncns0">Debian package repository</a>.</p>
-
-<p>If you want to be notified whenever I release a new version of this software use the subscription feature of <a href="http://freshmeat.net/projects/libasyncns/">Freshmeat</a>.</p>
+<p><tt>libasyncns</tt>' bugs are tracked at <a href="http://bugs.freedesktop.org/buglist.cgi?bug_status=__open__&amp;product=libasyncns">bugs.freedesktop.org</a>.</p>
 
 <hr/>
 <address class="grey">Lennart Poettering &lt;@PACKAGE_BUGREPORT@&gt;, October 2009</address>

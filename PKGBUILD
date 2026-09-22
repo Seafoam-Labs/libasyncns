@@ -1,30 +1,35 @@
 # Maintainer: Seafoam Labs
-# Upstream 0.8 release hosted for Devario; not Arch's later Git snapshot.
+# Latest verified upstream Git snapshot, preserved for Devario.
 
 pkgname=libasyncns
-pkgver=0.8
-pkgrel=1
+pkgver=0.8+r3+g68cd5af
+pkgrel=4
 epoch=1
 pkgdesc='A C library for executing name service queries asynchronously'
 arch=('x86_64')
 url='https://github.com/Seafoam-Labs/libasyncns'
 license=('LGPL-2.1-or-later')
 depends=('glibc')
+makedepends=('lynx')
 
-# Pin the unmodified release import, independently of packaging changes.
-_commit=12c27ddd14b96086975112cdf5c287a4f7ff1293
+# Original upstream master, also used by Arch; hosted on our upstream branch.
+_commit=68cd5aff1467638c086f1bedcc750e34917168e4
 source=("$pkgname-$pkgver-$_commit.tar.gz::$url/archive/$_commit.tar.gz")
-sha256sums=('403284facfd7cdc6ca5a60fc5f9b96cd8b318cb61e76630ca21c18da3aa5ef8d')
+sha256sums=('69597d5a2791f857f1660888d60cf5bf59284c972a4f318bba064752b0641436')
+
+prepare() {
+  cd "$pkgname-$_commit"
+  # Git snapshots do not include the release's generated configure script.
+  autoreconf -fi
+}
 
 build() {
   cd "$pkgname-$_commit"
-  # The release includes configure and pre-generated documentation.
   ./configure \
     --prefix=/usr \
     --sysconfdir=/etc \
     --localstatedir=/var \
-    --disable-static \
-    --disable-lynx
+    --disable-static
   make
 }
 
@@ -38,5 +43,8 @@ check() {
 package() {
   cd "$pkgname-$_commit"
   make DESTDIR="$pkgdir" install
+  # Lynx emits absolute build-directory links; keep installed docs relocatable.
+  sed -i 's,file://[^[:space:]]*/doc/README.html,README.html,g' \
+    "$pkgdir/usr/share/doc/$pkgname/README"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
