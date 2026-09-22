@@ -1,0 +1,13 @@
+pkgbase = libasyncns
+	pkgdesc = A C library for executing name service queries asynchronously
+	pkgver = 0.8
+	pkgrel = 1
+	epoch = 1
+	url = https://github.com/Seafoam-Labs/libasyncns
+	arch = x86_64
+	license = LGPL-2.1-or-later
+	depends = glibc
+	source = libasyncns-0.8-12c27ddd14b96086975112cdf5c287a4f7ff1293.tar.gz::https://github.com/Seafoam-Labs/libasyncns/archive/12c27ddd14b96086975112cdf5c287a4f7ff1293.tar.gz
+	sha256sums = 403284facfd7cdc6ca5a60fc5f9b96cd8b318cb61e76630ca21c18da3aa5ef8d
+
+pkgname = libasyncns

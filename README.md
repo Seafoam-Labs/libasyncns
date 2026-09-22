@@ -64,6 +64,35 @@ make DESTDIR="$pkgdir" install
 Here, `pkgdir` is the package builder's staging directory. See the original
 `README` for upstream build documentation.
 
+## Building a Devario package
+
+The root [PKGBUILD](PKGBUILD) builds `libasyncns` version `1:0.8-1` for x86_64.
+It downloads a SHA-256-verified archive of the immutable release-import commit
+from this repository. It uses the generated `configure` script and existing
+documentation, so Git, bootstrap regeneration, and Lynx are not needed to build
+the package. An Arch-compatible `base-devel` environment and `glibc` are needed.
+
+From a checkout of this repository:
+
+```sh
+makepkg
+```
+
+Shelly can review and build the same recipe:
+
+```sh
+shelly build --review-only --json ./PKGBUILD
+shelly build ./PKGBUILD
+```
+
+The `check()` step runs upstream's `make check`, which compiles its example test
+program but does not execute a runtime test suite. The example makes public DNS
+queries and is not run automatically by this recipe.
+
+The package retains Arch's epoch of `1`, but `1:0.8-1` sorts below
+`1:0.8+r3+g68cd5af-3`. Publishing it does not automatically upgrade installations
+using Arch's later snapshot; using this release is an explicit packaging choice.
+
 ## License and attribution
 
 libasyncns is copyright its upstream authors and is distributed under the
