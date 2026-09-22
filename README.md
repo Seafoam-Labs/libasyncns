@@ -48,19 +48,22 @@ service.
 
 ## Building a Devario package
 
-The root [PKGBUILD](PKGBUILD) builds **1:0.8+r3+g68cd5af-4** for x86_64. It
-retrieves an archive of the original upstream commit from this repository and
-verifies SHA-256:
+The root [PKGBUILD](PKGBUILD) builds **1:0.8+r3+g68cd5af-5** for x86_64. It
+clones the source directly from this repository over HTTPS and checks out the
+original upstream commit:
 
 ```text
-69597d5a2791f857f1660888d60cf5bf59284c972a4f318bba064752b0641436
+git+https://github.com/Seafoam-Labs/libasyncns.git#commit=68cd5aff1467638c086f1bedcc750e34917168e4
 ```
 
-The commit is pinned independently of changes to the packaging branch. This
-snapshot matches Arch's source revision; package release `4` sorts above Arch's
-`1:0.8+r3+g68cd5af-3` and our previous `1:0.8-1` release package.
+The commit is pinned independently of changes to the packaging branch. Git
+sources use `sha256sums=('SKIP')`; source selection is fixed by the full commit
+ID, with TLS verification enabled. This snapshot matches Arch's source revision;
+package release `5` sorts above Arch's `1:0.8+r3+g68cd5af-3` and our earlier
+packages.
 
-Use an Arch-compatible `base-devel` environment with `glibc` and `lynx` installed:
+Use an Arch-compatible `base-devel` environment with `glibc`, `git`, and `lynx`
+installed:
 
 ```sh
 makepkg
@@ -95,8 +98,8 @@ available for reproducibility but is no longer the PKGBUILD's source.
   4f1a66e746cbe54ff3c2fbada5843df4fbbbe7481d80be003e8d11161935ab74
   ```
 
-This checksum applies only to the original release archive, not to the Git
-snapshot archive used by the current PKGBUILD.
+This checksum applies only to the original release archive. The current
+PKGBUILD uses a Git checkout instead.
 
 ## License and attribution
 
